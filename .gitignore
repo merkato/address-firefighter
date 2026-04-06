@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Dane
+data/*
+!data/terc.csv
+# terc.csv jest mały a trudno go pobrać z gus
+
+# Wyniki geokodowania
+app/exports/*.gpkg
+app/exports/*.csv
+
+# Docker
+.DS_Store

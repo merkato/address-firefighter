@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: strazak_db
+    environment:
+      POSTGRES_DB: prg_database
+      POSTGRES_USER: strazak
+      POSTGRES_PASSWORD: haslo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro # Inicjalizacja schematu
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U strazak -d prg_database"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kontener importera (tylko dane)
+  importer:
+    build: 
+      context: .
+      dockerfile: scripts/Dockerfile.setup
+    container_name: strazak_importer
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/app
+      - ./data:/data
+    environment:
+      DB_HOST: db
+      DB_NAME: prg_database
+      DB_USER: strazak
+      DB_PASS: haslo
+
+  app:
+    build: .
+    container_name: strazak_app
+    ports:
+      - "11280:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://strazak:haslo@db:5432/prg_database
+    volumes:
+      - .:/app
+
+volumes:
+  pgdata:

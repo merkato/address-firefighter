@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+asyncpg
+pandas
+openpyxl
+geopandas
+pyogrio        # Szybki silnik do zapisu GeoPackage
+jinja2         # Szablony HTML
+sse-starlette

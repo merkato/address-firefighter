@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Geokodowania PRG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .progress-glow { box-shadow: 0 0 15px rgba(220, 38, 38, 0.5); }
+    </style>
+</head>
+<body class="bg-slate-200 p-4 md:p-8 font-sans antialiased text-slate-900">
+
+    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-300" x-data="app()" x-cloak>
+        
+        <header class="bg-red-700 p-6 text-white flex justify-between items-center border-b-4 border-red-900">
+            <div>
+                <h1 class="text-3xl font-black tracking-tighter italic leading-none">SYSTEM GEOKODOWANIA PRG</h1>
+                <p class="text-red-100 text-xs font-bold uppercase tracking-[0.2em] mt-1">Fuzzy logic geocoder danych PRG</p>
+            </div>
+            <template x-if="step === 2">
+                <button @click="reset()" class="bg-red-950 hover:bg-black text-white px-4 py-2 rounded font-black text-[10px] uppercase transition-all">
+                    Nowe zadanie
+                </button>
+            </template>
+        </header>
+
+        <main class="p-6 md:p-10">
+
+            <section x-show="step === 1" class="space-y-8 animate-in fade-in duration-500">
+                <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-8 shadow-inner">
+                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 border-b pb-2">Parametry wejściowe pliku</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                        <div class="lg:col-span-1">
+                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Plik źródłowy (CSV/XLSX):</label>
+                            <input type="file" id="fileInput" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-slate-800 file:text-white hover:file:bg-slate-700 transition cursor-pointer border p-1 rounded-lg bg-white">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Separator pól:</label>
+                            <select x-model="import_settings.sep" class="w-full border-2 p-2 rounded-lg text-sm bg-white outline-none focus:border-red-600 font-medium">
+                                <option value="auto">Automatyczna detekcja</option>
+                                <option value=";">Średnik (;)</option>
+                                <option value=",">Przecinek (,)</option>
+                                <option value="\t">Tabulacja (TSV)</option>
+                                <option value="|">Pionowa kreska (|)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Kwalifikator tekstu:</label>
+                            <select x-model="import_settings.quote" class="w-full border-2 p-2 rounded-lg text-sm bg-white outline-none focus:border-red-600 font-medium">
+                                <option value="&quot;">Cudzysłów (")</option>
+                                <option value="'">Apostrof (')</option>
+                                <option value="">Brak kwalifikatora</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Kodowanie znaków:</label>
+                            <select x-model="import_settings.encoding" class="w-full border-2 p-2 rounded-lg text-sm bg-white outline-none focus:border-red-600 font-medium">
+                                <option value="utf-8">UTF-8 (Standard)</option>
+                                <option value="cp1250">Windows-1250 (PL)</option>
+                                <option value="iso-8859-2">ISO-8859-2</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <button @click="upload" class="w-full bg-red-700 hover:bg-red-600 text-white py-5 rounded-xl font-black text-xl transition-all shadow-xl shadow-red-900/20 active:scale-[0.98] uppercase tracking-tighter">
+                            Wczytaj i analizuj strukturę
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section x-show="step === 2" class="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">Mapowanie pól adresowych</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Miejscowość (wymagane):</label>
+                                <select x-model="mapping.msc" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none font-semibold">
+                                    <option value="">-- wybierz kolumnę --</option>
+                                    <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Format zapisu ulicy:</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button @click="mapping.type = 'combined'" :class="mapping.type === 'combined' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-2 rounded font-black text-[10px] uppercase transition-all">Razem</button>
+                                    <button @click="mapping.type = 'separate'" :class="mapping.type === 'separate' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-2 rounded font-black text-[10px] uppercase transition-all">Osobno</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-4 rounded-lg border border-slate-200">
+                            <template x-if="mapping.type === 'combined'">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ulica + Numer domu:</label>
+                                    <select x-model="mapping.ulc_combined" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none">
+                                        <option value="">-- wybierz kolumnę --</option>
+                                        <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                    </select>
+                                </div>
+                            </template>
+                            <template x-if="mapping.type === 'separate'">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ulica:</label>
+                                        <select x-model="mapping.ulc_sep" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none">
+                                            <option value="">-- brak kolumny --</option>
+                                            <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Numer domu:</label>
+                                        <select x-model="mapping.num_sep" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none">
+                                            <option value="">-- wybierz kolumnę --</option>
+                                            <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                        </select>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 p-6 rounded-xl border border-blue-200 shadow-sm space-y-6">
+                        <h3 class="text-xs font-black text-blue-400 uppercase tracking-widest border-b border-blue-100 pb-2">Ograniczenia terytorialne</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Województwo:</label>
+                                <select x-model="mapping.woj" class="w-full border-2 p-2 rounded-lg text-sm bg-white border-blue-100">
+                                    <option value="">Przeszukuj całą Polskę</option>
+                                    <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Powiat:</label>
+                                <select x-model="mapping.pow" class="w-full border-2 p-2 rounded-lg text-sm bg-white border-blue-100">
+                                    <option value="">Dowolny powiat</option>
+                                    <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-end">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Weryfikacja struktury (pierwsze 5 rekordów)</h3>
+                        <span class="text-[10px] font-bold text-slate-500">Razem rekordów: <span x-text="total_rows"></span></span>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border-2 border-slate-100 shadow-sm">
+                        <table class="min-w-full text-[11px] divide-y divide-slate-200">
+                            <thead class="bg-slate-100 text-slate-700 font-bold">
+                                <tr>
+                                    <template x-for="col in columns" :key="col">
+                                        <th class="px-4 py-3 text-left whitespace-nowrap" x-text="col"></th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 bg-white text-slate-600 font-medium">
+                                <template x-for="(row, idx) in preview" :key="idx">
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <template x-for="col in columns" :key="col">
+                                            <td class="px-4 py-2" x-text="row[col]"></td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 p-8 rounded-2xl text-white shadow-2xl border-t-8 border-red-700">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                        <div>
+                            <p class="text-red-500 text-[10px] font-black uppercase tracking-[0.3em] mb-1">Status przetwarzania</p>
+                            <h4 class="text-3xl font-bold tracking-tight italic" x-text="statusLabel()"></h4>
+                        </div>
+                        <div class="grid grid-cols-2 gap-8 font-mono">
+                            <div class="text-right">
+                                <p class="text-slate-500 text-[9px] uppercase font-bold">Pozytywne</p>
+                                <p class="text-3xl text-emerald-400 font-black" x-text="stats.success"></p>
+                            </div>
+                            <div class="text-right border-l border-slate-800 pl-8">
+                                <p class="text-slate-500 text-[9px] uppercase font-bold">Odrzucone</p>
+                                <p class="text-3xl text-red-500 font-black" x-text="stats.fail"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="h-4 w-full bg-slate-800 rounded-full border border-slate-700 p-0.5 mb-10" x-show="stats.status !== 'idle'">
+                        <div class="h-full bg-red-600 rounded-full transition-all duration-300 relative shadow-[0_0_15px_rgba(220,38,38,0.4)]" :style="`width: ${stats.progress}%`">
+                            <div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/20 animate-pulse"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <button @click="process()" x-show="stats.status === 'idle'" class="w-full bg-red-700 hover:bg-red-600 py-6 rounded-xl font-black text-2xl transition-all shadow-xl active:scale-95 uppercase tracking-tighter">
+                            URUCHOM GEOKODOWANIE
+                        </button>
+                        
+                        <div x-show="stats.status === 'processing'" class="flex justify-center">
+                            <button @click="abort()" class="bg-red-900 hover:bg-red-700 border-4 border-black px-12 py-5 rounded-full font-black text-sm uppercase tracking-widest transition-all shadow-2xl animate-pulse">
+                                🛑 STOP
+                            </button>
+                        </div>
+
+                        <div x-show="stats.status === 'completed'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <a :href="stats.gpkg_url" class="bg-emerald-600 hover:bg-emerald-500 p-5 rounded-xl text-center font-black text-xl shadow-lg flex items-center justify-center gap-3 transition-colors">
+                                💾 POBIERZ GEOPACKAGE
+                            </a>
+                            <a :href="stats.csv_url" class="bg-slate-800 hover:bg-slate-700 p-5 rounded-xl text-center font-black text-slate-300 text-sm flex items-center justify-center gap-3 border border-slate-700 transition-colors">
+                                📑 LISTA ODRZUCONYCH (CSV)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        function app() {
+            return {
+                step: 1, 
+                columns: [], 
+                preview: [], 
+                total_rows: 0,
+                import_settings: { sep: 'auto', quote: '"', encoding: 'utf-8' },
+                mapping: { type: 'combined', msc: '', ulc_combined: '', ulc_sep: '', num_sep: '', woj: '', pow: '' },
+                stats: { status: 'idle', progress: 0, success: 0, fail: 0, job_id: null, gpkg_url: '', csv_url: '' },
+                
+                async upload() {
+                    const fileInput = document.getElementById('fileInput');
+                    const file = fileInput.files[0];
+                    if (!file) { alert("Brak pliku. Proszę wskazać plik źródłowy."); return; }
+                    
+                    let fd = new FormData();
+                    fd.append('file', file);
+                    fd.append('sep', this.import_settings.sep);
+                    fd.append('quote', this.import_settings.quote);
+                    fd.append('encoding', this.import_settings.encoding);
+
+                    try {
+                        let res = await fetch('/preview', { method: 'POST', body: fd });
+                        if (!res.ok) throw new Error();
+                        let data = await res.json();
+                        this.columns = data.columns;
+                        this.preview = data.sample;
+                        this.total_rows = data.total_rows;
+                        this.step = 2;
+                    } catch (err) { alert("Błąd analizy pliku. Sprawdź separator i kodowanie."); }
+                },
+
+                async process() {
+                    const fileInput = document.getElementById('fileInput');
+                    let fd = new FormData();
+                    fd.append('file', fileInput.files[0]);
+                    fd.append('mapping_type', this.mapping.type);
+                    fd.append('msc_col', this.mapping.msc);
+                    fd.append('ulc_col', this.mapping.type === 'combined' ? this.mapping.ulc_combined : this.mapping.ulc_sep);
+                    fd.append('num_col', this.mapping.num_sep);
+                    fd.append('woj_col', this.mapping.woj);
+                    fd.append('pow_col', this.mapping.pow);
+                    fd.append('sep', this.import_settings.sep);
+                    fd.append('quote', this.import_settings.quote);
+                    fd.append('encoding', this.import_settings.encoding);
+                    
+                    let res = await fetch('/start-geocoding', { method: 'POST', body: fd });
+                    let { job_id } = await res.json();
+                    this.stats.job_id = job_id;
+                    this.stats.status = 'processing';
+
+                    const es = new EventSource(`/stream-progress/${job_id}`);
+                    es.onmessage = (e) => {
+                        const data = JSON.parse(e.data);
+                        this.stats.progress = data.progress;
+                        this.stats.success = data.success;
+                        this.stats.fail = data.fail;
+                        this.stats.status = data.status;
+                        if (['completed', 'cancelled', 'failed'].includes(data.status)) {
+                            this.stats.gpkg_url = data.gpkg_url;
+                            this.stats.csv_url = data.csv_url;
+                            es.close();
+                        }
+                    };
+                },
+
+                async abort() {
+                    if (confirm("Potwierdź natychmiastowe przerwanie operacji.")) {
+                        await fetch(`/cancel-job/${this.stats.job_id}`, { method: 'POST' });
+                    }
+                },
+
+                statusLabel() {
+                    if (this.stats.status === 'idle') return 'Oczekiwanie na rozkaz';
+                    if (this.stats.status === 'processing') return `Akcja w toku...`;
+                    if (this.stats.status === 'completed') return 'Zadanie ukończone';
+                    if (this.stats.status === 'cancelled') return 'Przerwano operację';
+                    return 'Błąd krytyczny';
+                },
+
+                reset() { location.reload(); }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+FROM alpine:3.18
+
+# Instalacja niezbędnych narzędzi: bash, postgres-client, gdal (dla ogr2ogr), wget, unzip
+RUN apk add --no-cache \
+    bash \
+    postgresql15-client \
+    gdal-tools \
+    wget \
+    unzip
+
+WORKDIR /app
+
+COPY scripts/setup_prg.sh .
+RUN chmod +x setup_prg.sh
+
+# Domyślna komenda uruchamiająca skrypt
+CMD ["/bin/bash", "./setup_prg.sh"]
