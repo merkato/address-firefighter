@@ -75,8 +75,24 @@
                         </button>
                     </div>
                 </div>
-            </section>
+                <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-300 pt-8">
 
+                <div class="space-y-4 bg-slate-100 p-4 rounded-lg border-l-4 border-slate-400">
+                    <h4 class="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                        🛡️ Warunki korzystania
+                    </h4>
+                    <ul class="text-[10px] text-slate-500 space-y-2 list-disc pl-4 font-medium">
+                        <li>Dane wynikowe generowane są na podstawie Państwowego Rejestru Granic (**PRG**) udostępnianego przez GUGiK.</li>
+                        <li class="text-red-800">Aplikacja ma charakter testowy i doświadczalny. Nie powinny w niej być przetwarzane dane wrażliwe. </li>
+                        <li>System nie przechowuje trwale wczytywanych plików – przetwarzanie odbywa się w pamięci ulotnej serwera.</li>
+                        <li>Dostawca oprogramowania nie ponosi odpowiedzialności za błędy wynikające z nieścisłości w bazach źródłowych PRG.</li>
+                        <li>Użytkownik jest zobowiązany do przestrzegania obowiązujących przepisów dotyczących ochrony danych osobowych (RODO), oraz wewnętrznych regulacji dotyczących bezpieczeństwa informacji podczas korzystania z aplikacji.</li>
+                    </ul>
+                </div>
+            </div>
+
+            </section>
+            
             <section x-show="step === 2" class="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -221,6 +237,20 @@
                             <a :href="stats.csv_url" class="bg-slate-800 hover:bg-slate-700 p-5 rounded-xl text-center font-black text-slate-300 text-sm flex items-center justify-center gap-3 border border-slate-700 transition-colors">
                                 📑 LISTA ODRZUCONYCH (CSV)
                             </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-900 p-8 rounded-2xl text-white shadow-2xl border-t-8 border-red-700">
+                    <div class="mt-8 pt-6 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[9px] font-mono text-slate-500 uppercase tracking-widest">License:</span>
+                            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pl" target="_blank" class="text-[9px] font-bold text-slate-400 hover:text-red-500 transition-colors">CC BY-SA 4.0</a>
+                        </div>
+                        
+                        <div class="text-right">
+                            <p class="text-[10px] font-mono text-slate-500 italic">
+                                Z dużą ilością kawy, <span class="text-slate-300 font-bold">SQ9NIT</span>, 2026
+                            </p>
                         </div>
                     </div>
                 </div>
