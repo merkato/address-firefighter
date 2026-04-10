@@ -268,9 +268,131 @@
             </p>
         </div>
     </div>
-
     <script>
-        // ... (Reszta Twojej logiki JS bez zmian) ...
+    // --- MODUŁ KONWERTERA DMS ---
+    function konwerterApp() {
+        return {
+            file: null,
+            encoding: 'utf-8',
+            loading: false,
+            async convert() {
+                if(!this.file) { alert("Wybierz plik Excel!"); return; }
+                this.loading = true;
+                const formData = new FormData();
+                formData.append('file', this.file);
+                formData.append('encoding', this.encoding);
+
+                try {
+                    const response = await fetch('/konwerter/process', { 
+                        method: 'POST', 
+                        body: formData 
+                    });
+
+                    if (!response.ok) throw new Error('Błąd konwersji. Sprawdź czy plik ma kolumny: Szerokość geo. i Długość geo.');
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = this.file.name.split('.')[0] + "_GIS.gpkg";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } catch (err) { 
+                    alert('Błąd: ' + err.message); 
+                } finally { 
+                    this.loading = false; 
+                }
+            }
+        }
+    }
+
+    // --- MODUŁ GEOKODERA PRG ---
+    function app() {
+        return {
+            step: 1, 
+            columns: [], 
+            preview: [], 
+            total_rows: 0,
+            import_settings: { sep: 'auto', quote: '"', encoding: 'utf-8' },
+            mapping: { type: 'combined', msc: '', ulc_combined: '', ulc_sep: '', num_sep: '', woj: '', pow: '' },
+            stats: { status: 'idle', progress: 0, success: 0, fail: 0, job_id: null, gpkg_url: '', csv_url: '' },
+            
+            async upload() {
+                const fileInput = document.getElementById('fileInput');
+                const file = fileInput.files[0];
+                if (!file) { alert("Brak pliku. Proszę wskazać plik źródłowy."); return; }
+                
+                let fd = new FormData();
+                fd.append('file', file);
+                fd.append('sep', this.import_settings.sep);
+                fd.append('quote', this.import_settings.quote);
+                fd.append('encoding', this.import_settings.encoding);
+
+                try {
+                    let res = await fetch('/preview', { method: 'POST', body: fd });
+                    if (!res.ok) throw new Error();
+                    let data = await res.json();
+                    this.columns = data.columns;
+                    this.preview = data.sample;
+                    this.total_rows = data.total_rows;
+                    this.step = 2;
+                } catch (err) { 
+                    alert("Błąd analizy pliku. Sprawdź separator i kodowanie."); 
+                }
+            },
+
+            async process() {
+                const fileInput = document.getElementById('fileInput');
+                let fd = new FormData();
+                fd.append('file', fileInput.files[0]);
+                fd.append('mapping_type', this.mapping.type);
+                fd.append('msc_col', this.mapping.msc);
+                fd.append('ulc_col', this.mapping.type === 'combined' ? this.mapping.ulc_combined : this.mapping.ulc_sep);
+                fd.append('num_col', this.mapping.num_sep);
+                fd.append('woj_col', this.mapping.woj);
+                fd.append('pow_col', this.mapping.pow);
+                fd.append('sep', this.import_settings.sep);
+                fd.append('quote', this.import_settings.quote);
+                fd.append('encoding', this.import_settings.encoding);
+                
+                let res = await fetch('/start-geocoding', { method: 'POST', body: fd });
+                let { job_id } = await res.json();
+                this.stats.job_id = job_id;
+                this.stats.status = 'processing';
+
+                const es = new EventSource(`/stream-progress/${job_id}`);
+                es.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    this.stats.progress = data.progress;
+                    this.stats.success = data.success;
+                    this.stats.fail = data.fail;
+                    this.stats.status = data.status;
+                    if (['completed', 'cancelled', 'failed'].includes(data.status)) {
+                        this.stats.gpkg_url = data.gpkg_url;
+                        this.stats.csv_url = data.csv_url;
+                        es.close();
+                    }
+                };
+            },
+
+            async abort() {
+                if (confirm("Potwierdź natychmiastowe przerwanie operacji.")) {
+                    await fetch(`/cancel-job/${this.stats.job_id}`, { method: 'POST' });
+                }
+            },
+
+            statusLabel() {
+                if (this.stats.status === 'idle') return 'Oczekiwanie na rozkaz';
+                if (this.stats.status === 'processing') return `Akcja w toku...`;
+                if (this.stats.status === 'completed') return 'Zadanie ukończone';
+                if (this.stats.status === 'cancelled') return 'Przerwano operację';
+                return 'Błąd krytyczny';
+            },
+
+            reset() { location.reload(); }
+        }
+    }
     </script>
 </body>
 </html>
