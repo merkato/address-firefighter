@@ -32,6 +32,21 @@ def split_combined_address(full_address):
         return match.group(1).strip(), match.group(2).strip()
     return s_addr, ""
 
+def parse_dms(dms_str):
+    if pd.isna(dms_str) or dms_str == "":
+        return None
+    dms_str = str(dms_str).strip().upper()
+    parts = re.findall(r"(\d+\.?\d*)", dms_str)
+    if len(parts) < 3: return None
+    try:
+        degrees = float(parts[0])
+        minutes = float(parts[1])
+        seconds = float(parts[2])
+        dd = degrees + (minutes / 60) + (seconds / 3600)
+        if 'S' in dms_str or 'W' in dms_str: dd = -dd
+        return dd
+    except Exception: return None
+
 @app.on_event("startup")
 async def startup():
     app.state.pool = await asyncpg.create_pool(DATABASE_URL)
@@ -45,6 +60,53 @@ async def index(request: Request):
         context={}
     )
 
+router_konwerter = APIRouter(tags=["Konwerter GIS"])
+
+@router_konwerter.post("/konwerter/process")
+async def process_conversion(
+    file: UploadFile = File(...),
+    encoding: str = Form("utf-8")
+):
+    try:
+        # Wczytanie pliku (Excel nie wymaga kodowania, ale zostawiamy opcję dla elastyczności)
+        content = await file.read()
+        df = pd.read_excel(io.BytesIO(content))
+        
+        lat_col = 'Szerokość geo.'
+        lon_col = 'Długość geo.'
+        
+        if lat_col not in df.columns or lon_col not in df.columns:
+            raise HTTPException(status_code=400, detail=f"Brak kolumn {lat_col}/{lon_col}")
+
+        # Konwersja DMS -> DD
+        df['lat_dd'] = df[lat_col].apply(parse_dms)
+        df['lon_dd'] = df[lon_col].apply(parse_dms)
+        
+        df_clean = df.dropna(subset=['lat_dd', 'lon_dd']).copy()
+        
+        if df_clean.empty:
+            raise HTTPException(status_code=400, detail="Nie znaleziono poprawnych danych DMS")
+
+        # Tworzenie GeoDataframe
+        geometry = [Point(xy) for xy in zip(df_clean['lon_dd'], df_clean['lat_dd'])]
+        gdf = gpd.GeoDataFrame(df_clean, geometry=geometry, crs="EPSG:4326")
+        
+        # Zapis do bufora GPKG
+        buffer = io.BytesIO()
+        gdf.to_file(buffer, driver="GPKG", engine="pyogrio")
+        buffer.seek(0)
+        
+        output_filename = f"{file.filename.split('.')[0]}_converted.gpkg"
+        
+        return StreamingResponse(
+            buffer,
+            media_type="application/geopackage+sqlite3",
+            headers={"Content-Disposition": f"attachment; filename={output_filename}"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.post("/preview")
 async def preview(
     file: UploadFile = File(...), 
@@ -292,3 +354,5 @@ async def run_geocoding_task(job_id, contents, filename, m_type, msc_c, ulc_c, n
 async def download(job_id: str, file_type: str):
     path = f"{EXPORTS_DIR}/{job_id}.gpkg" if file_type == "gpkg" else f"{EXPORTS_DIR}/{job_id}_fail.csv"
     return FileResponse(path, filename=os.path.basename(path))
+
+app.include_router(router_konwerter)

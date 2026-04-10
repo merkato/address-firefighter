@@ -1,17 +1,17 @@
-FROM alpine:3.18
+FROM debian:bookworm-slim
 
-# Instalacja niezbędnych narzędzi: bash, postgres-client, gdal (dla ogr2ogr), wget, unzip
-RUN apk add --no-cache \
+# Instalacja narzędzi
+RUN apt-get update && apt-get install -y \
     bash \
-    postgresql15-client \
-    gdal-tools \
+    postgresql-client \
+    gdal-bin \
     wget \
-    unzip
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY scripts/setup_prg.sh .
 RUN chmod +x setup_prg.sh
 
-# Domyślna komenda uruchamiająca skrypt
 CMD ["/bin/bash", "./setup_prg.sh"]

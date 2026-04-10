@@ -257,6 +257,87 @@
             </section>
         </main>
     </div>
+    <div x-data="konwerterApp()" class="max-w-4xl mx-auto py-10 px-4">
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+            <div class="bg-slate-900 p-8 text-white border-b-8 border-red-700">
+                <div class="flex items-center gap-4">
+                    <div class="bg-red-700 p-3 rounded-xl animate-pulse">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black tracking-tighter uppercase italic">Konwerter DMS <span class="text-red-600">GIS</span></h1>
+                        <p class="text-slate-400 font-mono text-xs uppercase tracking-widest">Excel -> GeoPackage (EPSG:4326)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8 space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">Plik wejściowy (Excel)</label>
+                        <input type="file" @change="file = $event.target.files[0]" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" />
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">Kodowanie znaków</label>
+                        <select x-model="encoding" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-sm font-bold focus:border-red-500 focus:outline-none transition-all">
+                            <option value="utf-8">UTF-8</option>
+                            <option value="windows-1250">Windows-1250 (CP1252)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-6">
+                    <button @click="convert" :disabled="!file || loading" 
+                            class="w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-3"
+                            :class="loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-800 text-white transform hover:-translate-y-1 active:scale-95'">
+                        <span x-show="!loading">Uruchom konwersję</span>
+                        <span x-show="loading" class="flex items-center gap-2 italic">
+                            <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Przetwarzanie...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function konwerterApp() {
+        return {
+            file: null,
+            encoding: 'utf-8',
+            loading: false,
+            async convert() {
+                this.loading = true;
+                const formData = new FormData();
+                formData.append('file', this.file);
+                formData.append('encoding', this.encoding);
+
+                try {
+                    const response = await fetch('/konwerter/process', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) throw new Error('Błąd konwersji');
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = this.file.name.split('.')[0] + ".gpkg";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } catch (err) {
+                    alert('Błąd: ' + err.message);
+                } finally {
+                    this.loading = false;
+                }
+            }
+        }
+    }
+    </script>
 
     <script>
         function app() {
