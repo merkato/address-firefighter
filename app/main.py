@@ -72,12 +72,20 @@ async def process_conversion(
         content = await file.read()
         df = pd.read_excel(io.BytesIO(content))
         
-        lat_col = 'Szerokość geo.'
-        lon_col = 'Długość geo.'
+        df.columns = [str(c).strip().replace('\xa0', ' ') for c in df.columns]
         
-        if lat_col not in df.columns or lon_col not in df.columns:
-            raise HTTPException(status_code=400, detail=f"Brak kolumn {lat_col}/{lon_col}")
+        # Definiujemy nazwy, których szukamy
+        lat_target = 'Szerokość geo.'
+        lon_target = 'Długość geo.'
 
+        # Sprawdzamy czy są w wyczyszczonych kolumnach
+        if lat_target not in df.columns or lon_target not in df.columns:
+            # Dla debugowania wypiszmy co faktycznie widzi serwer
+            actual_cols = ", ".join([f"'{c}'" for c in df.columns])
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Nie znaleziono kolumn. Serwer widzi: {actual_cols}"
+            )
         # Konwersja DMS -> DD
         df['lat_dd'] = df[lat_col].apply(parse_dms)
         df['lon_dd'] = df[lon_col].apply(parse_dms)
