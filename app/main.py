@@ -10,7 +10,7 @@ from datetime import datetime
 from shapely.geometry import Point
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, Request, HTTPException, BackgroundTasks
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 
 app = FastAPI(title="System Geokodowania PRG")
