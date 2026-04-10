@@ -9,38 +9,38 @@
     <style>
         [x-cloak] { display: none !important; }
         .progress-glow { box-shadow: 0 0 15px rgba(220, 38, 38, 0.5); }
-        body { background-color: #cbd5e1; } /* Slate-300 dla lepszego kontrastu */
+        body { background-color: #cbd5e1; }
     </style>
 </head>
 <body class="p-2 md:p-4 font-sans antialiased text-slate-900 leading-tight">
 
-    <div class="w-[85%] max-w-none mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-300 mb-4" x-data="app()" x-cloak>
+    <div class="w-[85%] max-w-none mx-auto bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-300 mb-4" x-data="app()" x-cloak>
         
         <header class="bg-red-700 p-4 text-white flex justify-between items-center border-b-4 border-red-900">
             <div>
-                <h1 class="text-2xl font-black tracking-tighter italic leading-none uppercase">SYSTEM GEOKODOWANIA PRG</h1>
-                <p class="text-red-100 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">Fuzzy logic geocoder danych PRG</p>
+                <h1 class="text-3xl font-black tracking-tighter italic leading-none">SYSTEM GEOKODOWANIA PRG</h1>
+                <p class="text-red-100 text-xs font-bold uppercase tracking-[0.2em] mt-1">Fuzzy logic geocoder danych PRG</p>
             </div>
             <template x-if="step === 2">
-                <button @click="reset()" class="bg-red-950 hover:bg-black text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase transition-all">
+                <button @click="reset()" class="bg-red-950 hover:bg-black text-white px-4 py-2 rounded font-black text-[10px] uppercase transition-all">
                     Nowe zadanie
                 </button>
             </template>
         </header>
 
         <main class="p-4 md:p-6">
-            <section x-show="step === 1" class="space-y-4 animate-in fade-in duration-500">
-                <div class="bg-slate-50 border-2 border-slate-200 rounded-xl p-6 shadow-inner">
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">Parametry wejściowe pliku</h3>
+            <section x-show="step === 1" class="space-y-6 animate-in fade-in duration-500">
+                <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-6 shadow-inner">
+                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 border-b pb-2">Parametry wejściowe pliku</h3>
                     
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        <div class="md:col-span-1">
-                            <label class="block text-[9px] font-black text-slate-600 uppercase mb-1">Plik źródłowy (CSV/XLSX):</label>
-                            <input type="file" id="fileInput" class="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-[9px] file:font-black file:bg-slate-800 file:text-white hover:file:bg-slate-700 cursor-pointer border p-1 rounded bg-white">
+                        <div class="lg:col-span-1">
+                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Plik źródłowy (CSV/XLSX):</label>
+                            <input type="file" id="fileInput" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-slate-800 file:text-white hover:file:bg-slate-700 transition cursor-pointer border p-1 rounded-lg bg-white">
                         </div>
                         <div>
-                            <label class="block text-[9px] font-black text-slate-600 uppercase mb-1">Separator pól:</label>
-                            <select x-model="import_settings.sep" class="w-full border p-2 rounded text-xs bg-white font-bold outline-none focus:border-red-600">
+                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Separator pól:</label>
+                            <select x-model="import_settings.sep" class="w-full border-2 p-2 rounded-lg text-sm bg-white outline-none focus:border-red-600 font-medium">
                                 <option value="auto">Automatyczna detekcja</option>
                                 <option value=";">Średnik (;)</option>
                                 <option value=",">Przecinek (,)</option>
@@ -49,146 +49,228 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[9px] font-black text-slate-600 uppercase mb-1">Kwalifikator tekstu:</label>
-                            <select x-model="import_settings.quote" class="w-full border p-2 rounded text-xs bg-white font-bold outline-none focus:border-red-600">
+                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Kwalifikator tekstu:</label>
+                            <select x-model="import_settings.quote" class="w-full border-2 p-2 rounded-lg text-sm bg-white outline-none focus:border-red-600 font-medium">
                                 <option value="&quot;">Cudzysłów (")</option>
                                 <option value="'">Apostrof (')</option>
                                 <option value="">Brak kwalifikatora</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[9px] font-black text-slate-600 uppercase mb-1">Kodowanie znaków:</label>
-                            <select x-model="import_settings.encoding" class="w-full border p-2 rounded text-xs bg-white font-bold outline-none focus:border-red-600">
+                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Kodowanie znaków:</label>
+                            <select x-model="import_settings.encoding" class="w-full border-2 p-2 rounded-lg text-sm bg-white outline-none focus:border-red-600 font-medium">
                                 <option value="utf-8">UTF-8 (Standard)</option>
                                 <option value="cp1250">Windows-1250 (PL)</option>
                                 <option value="iso-8859-2">ISO-8859-2</option>
                             </select>
                         </div>
                     </div>
-
-                    <button @click="upload" class="w-full mt-6 bg-red-700 hover:bg-red-600 text-white py-4 rounded-xl font-black text-lg transition-all shadow-lg active:scale-[0.99] uppercase tracking-tighter">
-                        Wczytaj i analizuj strukturę
-                    </button>
+                    <div class="mt-6">
+                        <button @click="upload" class="w-full bg-red-700 hover:bg-red-600 text-white py-5 rounded-xl font-black text-xl transition-all shadow-xl shadow-red-900/20 active:scale-[0.98] uppercase tracking-tighter">
+                            Wczytaj i analizuj strukturę
+                        </button>
+                    </div>
                 </div>
 
-                <div class="bg-slate-100 p-4 rounded-xl border-l-4 border-slate-400">
-                    <h4 class="text-[9px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2 mb-2">🛡️ Warunki korzystania</h4>
-                    <ul class="text-[9px] text-slate-500 space-y-1 list-disc pl-4 font-medium">
+                <div class="bg-slate-100 p-4 rounded-lg border-l-4 border-slate-400">
+                    <h4 class="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2 mb-2">🛡️ Warunki korzystania</h4>
+                    <ul class="text-[10px] text-slate-500 space-y-1 list-disc pl-4 font-medium">
                         <li>Dane wynikowe generowane są na podstawie Państwowego Rejestru Granic (**PRG**) udostępnianego przez GUGiK.</li>
-                        <li class="text-red-800 font-bold uppercase italic">Aplikacja ma charakter testowy i doświadczalny. Nie powinny w niej być przetwarzane dane wrażliwe. </li>
-                        <li>System nie przechowuje plików – przetwarzanie odbywa się w pamięci RAM.</li>
-                        <li>Dostawca nie ponosi odpowiedzialności za nieścisłości w bazach PRG.</li>
+                        <li class="text-red-800">Aplikacja ma charakter testowy i doświadczalny. Nie powinny w niej być przetwarzane dane wrażliwe. </li>
+                        <li>System nie przechowuje trwale wczytywanych plików – przetwarzanie odbywa się w pamięci ulotnej serwera.</li>
+                        <li>Dostawca oprogramowania nie ponosi odpowiedzialności za błędy wynikające z nieścisłości w bazach źródłowych PRG.</li>
+                        <li>Użytkownik jest zobowiązany do przestrzegania obowiązujących przepisów dotyczących ochrony danych osobowych (RODO), oraz wewnętrznych regulacji dotyczących bezpieczeństwa informacji podczas korzystania z aplikacji.</li>
                     </ul>
                 </div>
             </section>
             
-            <section x-show="step === 2" class="space-y-4 animate-in slide-in-from-bottom-2 duration-500">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div class="lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
-                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-1">Mapowanie pól adresowych</h3>
-                        <div class="grid grid-cols-2 gap-4">
+            <section x-show="step === 2" class="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">Mapowanie pól adresowych</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-[9px] font-bold text-slate-500 uppercase mb-1">Miejscowość:</label>
-                                <select x-model="mapping.msc" class="w-full border p-2 rounded text-xs bg-white focus:border-red-600 outline-none font-bold">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Miejscowość (wymagane):</label>
+                                <select x-model="mapping.msc" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none font-semibold">
+                                    <option value="">-- wybierz kolumnę --</option>
                                     <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-[9px] font-bold text-slate-500 uppercase mb-1">Format zapisu ulicy:</label>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Format zapisu ulicy:</label>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button @click="mapping.type = 'combined'" :class="mapping.type === 'combined' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-2 rounded font-black text-[9px] uppercase">Razem</button>
-                                    <button @click="mapping.type = 'separate'" :class="mapping.type === 'separate' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-2 rounded font-black text-[9px] uppercase">Osobno</button>
+                                    <button @click="mapping.type = 'combined'" :class="mapping.type === 'combined' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-2 rounded font-black text-[10px] uppercase transition-all">Razem</button>
+                                    <button @click="mapping.type = 'separate'" :class="mapping.type === 'separate' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-2 rounded font-black text-[10px] uppercase transition-all">Osobno</button>
                                 </div>
                             </div>
                         </div>
+                        <div class="bg-white p-4 rounded-lg border border-slate-200">
+                            <template x-if="mapping.type === 'combined'">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ulica + Numer domu:</label>
+                                    <select x-model="mapping.ulc_combined" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none">
+                                        <option value="">-- wybierz kolumnę --</option>
+                                        <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                    </select>
+                                </div>
+                            </template>
+                            <template x-if="mapping.type === 'separate'">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ulica:</label>
+                                        <select x-model="mapping.ulc_sep" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none">
+                                            <option value="">-- brak kolumny --</option>
+                                            <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Numer domu:</label>
+                                        <select x-model="mapping.num_sep" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none">
+                                            <option value="">-- wybierz kolumnę --</option>
+                                            <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                        </select>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
                     </div>
-                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-200 space-y-4">
-                        <h3 class="text-[10px] font-black text-blue-400 uppercase tracking-widest border-b border-blue-100 pb-1">Terytorium</h3>
-                        <div class="grid grid-cols-1 gap-2">
-                            <select x-model="mapping.woj" class="w-full border p-2 rounded text-[10px] bg-white border-blue-100">
-                                <option value="">Cała Polska</option>
-                                <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
-                            </select>
-                            <select x-model="mapping.pow" class="w-full border p-2 rounded text-[10px] bg-white border-blue-100">
-                                <option value="">Dowolny powiat</option>
-                                <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
-                            </select>
+                    <div class="bg-blue-50 p-6 rounded-xl border border-blue-200 shadow-sm space-y-6">
+                        <h3 class="text-xs font-black text-blue-400 uppercase tracking-widest border-b border-blue-100 pb-2">Ograniczenia terytorialne</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Województwo:</label>
+                                <select x-model="mapping.woj" class="w-full border-2 p-2 rounded-lg text-sm bg-white border-blue-100">
+                                    <option value="">Przeszukuj całą Polskę</option>
+                                    <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Powiat:</label>
+                                <select x-model="mapping.pow" class="w-full border-2 p-2 rounded-lg text-sm bg-white border-blue-100">
+                                    <option value="">Dowolny powiat</option>
+                                    <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-slate-900 p-6 rounded-2xl text-white shadow-xl border-t-4 border-red-700">
-                    <div class="flex justify-between items-center mb-4">
+                <div class="space-y-3">
+                    <div class="flex justify-between items-end">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Weryfikacja struktury (pierwsze 5 rekordów)</h3>
+                        <span class="text-[10px] font-bold text-slate-500">Razem rekordów: <span x-text="total_rows"></span></span>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border-2 border-slate-100 shadow-sm">
+                        <table class="min-w-full text-[11px] divide-y divide-slate-200">
+                            <thead class="bg-slate-100 text-slate-700 font-bold uppercase">
+                                <tr>
+                                    <template x-for="col in columns" :key="col">
+                                        <th class="px-4 py-3 text-left whitespace-nowrap" x-text="col"></th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 bg-white text-slate-600 font-medium">
+                                <template x-for="(row, idx) in preview" :key="idx">
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <template x-for="col in columns" :key="col">
+                                            <td class="px-4 py-2" x-text="row[col]"></td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 p-6 rounded-2xl text-white shadow-2xl border-t-8 border-red-700">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
                         <div>
-                            <p class="text-red-500 text-[9px] font-black uppercase tracking-widest">Status</p>
-                            <h4 class="text-xl font-bold italic uppercase" x-text="statusLabel()"></h4>
+                            <p class="text-red-500 text-[10px] font-black uppercase tracking-[0.3em] mb-1">Status przetwarzania</p>
+                            <h4 class="text-3xl font-bold tracking-tight italic" x-text="statusLabel()"></h4>
                         </div>
-                        <div class="flex gap-6 font-mono text-right">
-                            <div>
-                                <p class="text-slate-500 text-[8px] uppercase">OK</p>
-                                <p class="text-2xl text-emerald-400 font-black" x-text="stats.success"></p>
+                        <div class="grid grid-cols-2 gap-8 font-mono">
+                            <div class="text-right">
+                                <p class="text-slate-500 text-[9px] uppercase font-bold">Pozytywne</p>
+                                <p class="text-3xl text-emerald-400 font-black" x-text="stats.success"></p>
                             </div>
-                            <div class="border-l border-slate-800 pl-6">
-                                <p class="text-slate-500 text-[8px] uppercase">BŁĄD</p>
-                                <p class="text-2xl text-red-500 font-black" x-text="stats.fail"></p>
+                            <div class="text-right border-l border-slate-800 pl-8">
+                                <p class="text-slate-500 text-[9px] uppercase font-bold">Odrzucone</p>
+                                <p class="text-3xl text-red-500 font-black" x-text="stats.fail"></p>
                             </div>
                         </div>
                     </div>
-                    <button @click="process()" x-show="stats.status === 'idle'" class="w-full bg-red-700 hover:bg-red-600 py-4 rounded-xl font-black text-xl transition-all shadow-lg uppercase">
-                        URUCHOM GEOKODOWANIE
-                    </button>
-                    <div x-show="stats.status === 'completed'" class="grid grid-cols-2 gap-4">
-                        <a :href="stats.gpkg_url" class="bg-emerald-600 p-3 rounded-lg text-center font-black text-sm uppercase">Zapisz GPKG</a>
-                        <a :href="stats.csv_url" class="bg-slate-800 p-3 rounded-lg text-center font-black text-xs text-slate-400 uppercase border border-slate-700">Log błędów</a>
+                    <div class="space-y-4">
+                        <button @click="process()" x-show="stats.status === 'idle'" class="w-full bg-red-700 hover:bg-red-600 py-6 rounded-xl font-black text-2xl transition-all shadow-xl uppercase tracking-tighter">
+                            URUCHOM GEOKODOWANIE
+                        </button>
+                        <div x-show="stats.status === 'processing'" class="flex justify-center">
+                            <button @click="abort()" class="bg-red-900 hover:bg-red-700 border-4 border-black px-12 py-5 rounded-full font-black text-sm uppercase tracking-widest transition-all shadow-2xl animate-pulse">
+                                🛑 STOP
+                            </button>
+                        </div>
+                        <div x-show="stats.status === 'completed'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <a :href="stats.gpkg_url" class="bg-emerald-600 hover:bg-emerald-500 p-5 rounded-xl text-center font-black text-xl shadow-lg flex items-center justify-center gap-3 transition-colors uppercase">
+                                💾 POBIERZ GEOPACKAGE
+                            </a>
+                            <a :href="stats.csv_url" class="bg-slate-800 hover:bg-slate-700 p-5 rounded-xl text-center font-black text-slate-300 text-sm flex items-center justify-center gap-3 border border-slate-700 transition-colors uppercase">
+                                📑 LISTA ODRZUCONYCH (CSV)
+                            </a>
+                        </div>
                     </div>
                 </div>
             </section>
         </main>
     </div>
 
-    <div x-data="konwerterApp()" class="w-[85%] max-w-none mx-auto mb-10" x-cloak>
-        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-300">
-            <div class="bg-slate-900 p-4 text-white border-b-4 border-red-700">
-                <div class="flex items-center gap-4">
-                    <div class="bg-red-700 p-2 rounded shadow shadow-red-900/50">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-black tracking-tighter uppercase italic leading-none">KONWERTER SWD &rarr; GIS</h1>
-                        <p class="text-slate-400 font-mono text-[9px] uppercase tracking-widest mt-1">Excel -> GeoPackage (EPSG:4326)</p>
-                    </div>
+    <div x-data="konwerterApp()" class="w-[85%] max-w-none mx-auto py-4 mb-4" x-cloak>
+        <div class="bg-white rounded-xl shadow-xl overflow-hidden border border-slate-300">
+            <div class="bg-slate-900 p-4 text-white border-b-4 border-red-700 flex items-center gap-4">
+                <div class="bg-red-700 p-2 rounded">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tighter uppercase italic">KONWERTER SWD &rarr; GIS</h1>
+                    <p class="text-slate-400 font-mono text-[9px] uppercase tracking-widest">Excel -> GeoPackage (EPSG:4326)</p>
                 </div>
             </div>
-
-            <div class="p-6 space-y-6 bg-white">
+            <div class="p-6 space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-slate-50 p-4 rounded-xl border">
-                        <label class="block text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest italic">Plik źródłowy (Excel)</label>
-                        <input type="file" @change="file = $event.target.files[0]" class="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-4 file:rounded file:bg-slate-900 file:text-white border-2 border-dashed p-1 rounded" />
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">PLIK ŹRÓDŁOWY (EXCEL)</label>
+                        <input type="file" @change="file = $event.target.files[0]" class="w-full text-xs text-slate-500 file:mr-4 file:py-1 file:px-4 file:rounded file:border-0 file:bg-slate-800 file:text-white border-2 border-dashed p-1 rounded" />
                     </div>
                     <div class="bg-slate-50 p-4 rounded-xl border">
-                        <label class="block text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest italic">Kodowanie znaków</label>
-                        <select x-model="encoding" class="w-full bg-white border p-2 rounded text-xs font-black focus:border-red-600 outline-none">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">KODOWANIE ZNAKÓW</label>
+                        <select x-model="encoding" class="w-full bg-white border p-2 rounded text-xs font-black outline-none focus:border-red-600">
                             <option value="utf-8">UTF-8 (Standard)</option>
                             <option value="windows-1250">Windows-1250 (PL)</option>
                         </select>
                     </div>
                 </div>
                 <button @click="convert" :disabled="!file || loading" 
-                        class="w-full py-4 rounded-xl font-black uppercase text-lg tracking-tighter transition-all shadow-lg shadow-red-900/20"
+                        class="w-full py-5 rounded-xl font-black uppercase text-xl transition-all shadow-lg shadow-red-900/20"
                         :class="loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-800 text-white transform active:scale-95'">
-                    <span x-show="!loading">Wczytaj i analizuj strukturę</span>
-                    <span x-show="loading" class="animate-pulse">TRWA PRZETWARZANIE...</span>
+                    <span x-show="!loading">URUCHOM KONWERSJĘ PLIKU</span>
+                    <span x-show="loading" class="animate-pulse italic uppercase">Trwa przetwarzanie danych...</span>
                 </button>
             </div>
         </div>
-        <p class="text-center mt-4 text-[9px] font-mono text-slate-500 italic uppercase tracking-widest">
-            System Wspomagania Operacyjnego &copy; SQ9NIT, 2026
-        </p>
+    </div>
+
+    <div class="w-[85%] mx-auto pb-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500">
+        <div class="flex items-center gap-2">
+            <span class="text-[9px] font-mono uppercase tracking-widest">License:</span>
+            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pl" target="_blank" class="text-[9px] font-bold hover:text-red-500 transition-colors">CC BY-SA 4.0</a>
+        </div>
+        <div class="text-right">
+            <p class="text-[10px] font-mono italic">
+                Z dużą ilością kawy, <span class="text-slate-700 font-bold">SQ9NIT</span>, 2026
+            </p>
+        </div>
     </div>
 
     <script>
-        // ... (Logika konwerterApp i app pozostaje bez zmian) ...
+        // ... (Reszta Twojej logiki JS bez zmian) ...
     </script>
 </body>
 </html>
