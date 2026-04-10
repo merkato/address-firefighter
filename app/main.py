@@ -63,61 +63,62 @@ async def index(request: Request):
 router_konwerter = APIRouter(tags=["Konwerter GIS"])
 
 @router_konwerter.post("/konwerter/process")
-async def process_conversion(
-    file: UploadFile = File(...),
-    encoding: str = Form("utf-8")
-):
+async def process_conversion(file: UploadFile = File(...)):
     try:
-        # Wczytanie pliku (Excel nie wymaga kodowania, ale zostawiamy opcję dla elastyczności)
         content = await file.read()
-        df = pd.read_excel(io.BytesIO(content), engine='openpyxl')
+        file_extension = file.filename.split('.')[-1].lower()
         
+        try:
+            if file_extension == 'xls':
+                # Wymuszamy xlrd dla starych formatów binarnych
+                df = pd.read_excel(io.BytesIO(content), engine='xlrd')
+            elif file_extension == 'csv':
+                df = pd.read_csv(io.BytesIO(content), sep=None, engine='python')
+            else:
+                # Domyślnie dla .xlsx i innych
+                df = pd.read_excel(io.BytesIO(content))
+        except Exception as e:
+            try:
+                df = pd.read_excel(io.BytesIO(content), engine='xlrd')
+            except:
+                raise HTTPException(status_code=400, detail=f"Nieobsługiwany format pliku: {str(e)}")
+
+        # 2. Czyszczenie nazw kolumn
         df.columns = [str(c).strip().replace('\xa0', ' ') for c in df.columns]
         
-        # Definiujemy nazwy, których szukamy
-        lat_target = 'Szerokość geo.'
-        lon_target = 'Długość geo.'
+        # 3. Szukanie kolumn
+        lat_col = next((c for c in df.columns if c.lower() == 'szerokość geo.'), None)
+        lon_col = next((c for c in df.columns if c.lower() == 'długość geo.'), None)
 
-        # Sprawdzamy czy są w wyczyszczonych kolumnach
-        if lat_target not in df.columns or lon_target not in df.columns:
-            # Dla debugowania wypiszmy co faktycznie widzi serwer
-            actual_cols = ", ".join([f"'{c}'" for c in df.columns])
+        if not lat_col or not lon_col:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Nie znaleziono kolumn. Serwer widzi: {actual_cols}"
+                detail=f"Brak wymaganych kolumn. Serwer widzi: {', '.join(df.columns)}"
             )
-        # Konwersja DMS -> DD
+
+        # ... (Dalsza część logiki z parse_dms i Point) ...
         df['lat_dd'] = df[lat_col].apply(parse_dms)
         df['lon_dd'] = df[lon_col].apply(parse_dms)
         
         df_clean = df.dropna(subset=['lat_dd', 'lon_dd']).copy()
         
-        if df_clean.empty:
-            raise HTTPException(status_code=400, detail="Nie znaleziono poprawnych danych DMS")
-
-        # Tworzenie GeoDataframe
         geometry = [Point(xy) for xy in zip(df_clean['lon_dd'], df_clean['lat_dd'])]
         gdf = gpd.GeoDataFrame(df_clean, geometry=geometry, crs="EPSG:4326")
         
-        # Zapis do bufora GPKG
         buffer = io.BytesIO()
         gdf.to_file(buffer, driver="GPKG", engine="pyogrio")
         buffer.seek(0)
         
-        output_filename = f"{file.filename.split('.')[0]}_converted.gpkg"
-        
         return StreamingResponse(
             buffer,
             media_type="application/geopackage+sqlite3",
-            headers={"Content-Disposition": f"attachment; filename={output_filename}"}
+            headers={"Content-Disposition": f"attachment; filename=konwersja_{file.filename}.gpkg"}
         )
-        
+
     except Exception as e:
         import traceback
-        print("--- KRYTYCZNY BŁĄD W KONWERTERZE ---")
-        print(traceback.format_exc()) # To wypisze cały błąd w docker logs
-        print("-----------------------------------")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Błąd systemowy: {str(e)}")
     
 @app.post("/preview")
 async def preview(
