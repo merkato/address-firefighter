@@ -113,6 +113,10 @@ async def process_conversion(
         )
         
     except Exception as e:
+        import traceback
+        print("--- KRYTYCZNY BŁĄD W KONWERTERZE ---")
+        print(traceback.format_exc()) # To wypisze cały błąd w docker logs
+        print("-----------------------------------")
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.post("/preview")
