@@ -93,26 +93,26 @@ async def process_conversion(
                 df = df.dropna(subset=['lat_dd', 'lon_dd'])
                 all_dataframes.append(df)
 
-        if not all_dataframes:
-            raise HTTPException(status_code=400, detail="Nie udało się przetworzyć żadnego z plików.")
+    if not all_dataframes:
+        raise HTTPException(status_code=400, detail="Nie udało się przetworzyć żadnego z plików.")
 
         # ŁĄCZENIE PLIKÓW
-        final_df = pd.concat(all_dataframes, ignore_index=True)
+    final_df = pd.concat(all_dataframes, ignore_index=True)
 
         # Tworzenie geometrii
-        geometry = [Point(xy) for xy in zip(final_df['lon_dd'], final_df['lat_dd'])]
-        gdf = gpd.GeoDataFrame(final_df, geometry=geometry, crs="EPSG:4326")
+    geometry = [Point(xy) for xy in zip(final_df['lon_dd'], final_df['lat_dd'])]
+    gdf = gpd.GeoDataFrame(final_df, geometry=geometry, crs="EPSG:4326")
         
-        buffer = io.BytesIO()
+    buffer = io.BytesIO()
         # FIX NAZWY WARSTWY: dodajemy parametr layer, żeby pozbyć się hasha
-        gdf.to_file(buffer, driver="GPKG", engine="pyogrio", layer="zestawienie_swd")
-        buffer.seek(0)
+    gdf.to_file(buffer, driver="GPKG", engine="pyogrio", layer="zestawienie_swd")
+    buffer.seek(0)
         
-        return StreamingResponse(
-            buffer,
-            media_type="application/geopackage+sqlite3",
-            headers={"Content-Disposition": "attachment; filename=zestawienie_swd.gpkg"}
-        )
+    return StreamingResponse(
+        buffer,
+        media_type="application/geopackage+sqlite3",
+        headers={"Content-Disposition": "attachment; filename=zestawienie_swd.gpkg"}
+    )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
