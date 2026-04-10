@@ -116,7 +116,10 @@ async def process_conversion(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Logowanie błędu do konsoli kontenera
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Błąd przetwarzania: {str(e)}")
     
 @app.post("/preview")
 async def preview(

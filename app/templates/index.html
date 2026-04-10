@@ -296,10 +296,11 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = this.file.name.split('.')[0] + "_GIS.gpkg";
+                    a.download = "zestawienie_zbiorcze_SWD.gpkg";
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
+                    window.URL.revokeObjectURL(url);
                 } catch (err) { 
                     alert('Błąd: ' + err.message); 
                 } finally { 
