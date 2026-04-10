@@ -7,6 +7,7 @@ import asyncpg
 import pandas as pd
 import geopandas as gpd
 from datetime import datetime
+from typing import List
 from shapely.geometry import Point
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, Request, HTTPException, BackgroundTasks
 from fastapi.templating import Jinja2Templates
@@ -63,62 +64,58 @@ async def index(request: Request):
 router_konwerter = APIRouter(tags=["Konwerter GIS"])
 
 @router_konwerter.post("/konwerter/process")
-async def process_conversion(file: UploadFile = File(...)):
-    try:
-        content = await file.read()
-        file_extension = file.filename.split('.')[-1].lower()
-        
-        try:
-            if file_extension == 'xls':
-                # Wymuszamy xlrd dla starych formatów binarnych
+async def process_conversion(
+    files: List[UploadFile] = File(...), # Przyjmujemy listę plików
+    encoding: str = Form("utf-8")
+):
+    all_dataframes = []
+    for file in files:
+            content = await file.read()
+            filename = file.filename.lower()
+            
+            # Identyfikacja i wczytywanie (tak jak wcześniej)
+            if filename.endswith('.xls'):
                 df = pd.read_excel(io.BytesIO(content), engine='xlrd')
-            elif file_extension == 'csv':
-                df = pd.read_csv(io.BytesIO(content), sep=None, engine='python')
             else:
-                # Domyślnie dla .xlsx i innych
-                df = pd.read_excel(io.BytesIO(content))
-        except Exception as e:
-            try:
-                df = pd.read_excel(io.BytesIO(content), engine='xlrd')
-            except:
-                raise HTTPException(status_code=400, detail=f"Nieobsługiwany format pliku: {str(e)}")
+                df = pd.read_excel(io.BytesIO(content), engine='openpyxl')
 
-        # 2. Czyszczenie nazw kolumn
-        df.columns = [str(c).strip().replace('\xa0', ' ') for c in df.columns]
-        
-        # 3. Szukanie kolumn
-        lat_col = next((c for c in df.columns if c.lower() == 'szerokość geo.'), None)
-        lon_col = next((c for c in df.columns if c.lower() == 'długość geo.'), None)
+            # Czyszczenie nazw kolumn
+            df.columns = [str(c).strip().replace('\xa0', ' ') for c in df.columns]
+            
+            # Szukanie kolumn (DMS -> DD)
+            lat_col = next((c for c in df.columns if c.lower() == 'szerokość geo.'), None)
+            lon_col = next((c for c in df.columns if c.lower() == 'długość geo.'), None)
 
-        if not lat_col or not lon_col:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Brak wymaganych kolumn. Serwer widzi: {', '.join(df.columns)}"
-            )
+            if lat_col and lon_col:
+                df['lat_dd'] = df[lat_col].apply(parse_dms)
+                df['lon_dd'] = df[lon_col].apply(parse_dms)
+                # Czyścimy rekordy bez współrzędnych
+                df = df.dropna(subset=['lat_dd', 'lon_dd'])
+                all_dataframes.append(df)
 
-        # ... (Dalsza część logiki z parse_dms i Point) ...
-        df['lat_dd'] = df[lat_col].apply(parse_dms)
-        df['lon_dd'] = df[lon_col].apply(parse_dms)
-        
-        df_clean = df.dropna(subset=['lat_dd', 'lon_dd']).copy()
-        
-        geometry = [Point(xy) for xy in zip(df_clean['lon_dd'], df_clean['lat_dd'])]
-        gdf = gpd.GeoDataFrame(df_clean, geometry=geometry, crs="EPSG:4326")
+        if not all_dataframes:
+            raise HTTPException(status_code=400, detail="Nie udało się przetworzyć żadnego z plików.")
+
+        # ŁĄCZENIE PLIKÓW
+        final_df = pd.concat(all_dataframes, ignore_index=True)
+
+        # Tworzenie geometrii
+        geometry = [Point(xy) for xy in zip(final_df['lon_dd'], final_df['lat_dd'])]
+        gdf = gpd.GeoDataFrame(final_df, geometry=geometry, crs="EPSG:4326")
         
         buffer = io.BytesIO()
-        gdf.to_file(buffer, driver="GPKG", engine="pyogrio")
+        # FIX NAZWY WARSTWY: dodajemy parametr layer, żeby pozbyć się hasha
+        gdf.to_file(buffer, driver="GPKG", engine="pyogrio", layer="zestawienie_swd")
         buffer.seek(0)
         
         return StreamingResponse(
             buffer,
             media_type="application/geopackage+sqlite3",
-            headers={"Content-Disposition": f"attachment; filename=konwersja_{file.filename}.gpkg"}
+            headers={"Content-Disposition": "attachment; filename=zestawienie_swd.gpkg"}
         )
 
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Błąd systemowy: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     
 @app.post("/preview")
 async def preview(

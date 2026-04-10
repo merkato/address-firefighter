@@ -237,7 +237,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-slate-50 p-4 rounded-xl border">
                         <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">PLIK ŹRÓDŁOWY (EXCEL)</label>
-                        <input type="file" @change="file = $event.target.files[0]" class="w-full text-xs text-slate-500 file:mr-4 file:py-1 file:px-4 file:rounded file:border-0 file:bg-slate-800 file:text-white border-2 border-dashed p-1 rounded" />
+                        <input type="file" @change="files = $event.target.files" multiple class="w-full text-xs text-slate-500 file:mr-4 file:py-1 file:px-4 file:rounded file:border-0 file:bg-slate-800 file:text-white border-2 border-dashed p-1 rounded" />
                     </div>
                     <div class="bg-slate-50 p-4 rounded-xl border">
                         <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">KODOWANIE ZNAKÓW</label>
@@ -272,14 +272,16 @@
     // --- MODUŁ KONWERTERA DMS ---
     function konwerterApp() {
         return {
-            file: null,
+            files: [],
             encoding: 'utf-8',
             loading: false,
             async convert() {
-                if(!this.file) { alert("Wybierz plik Excel!"); return; }
+                if(!this.files.length === 0) { alert("Wybierz przynajmniej jeden plik!"); return; }
                 this.loading = true;
                 const formData = new FormData();
-                formData.append('file', this.file);
+                for (let i = 0; i < this.files.length; i++) {
+                    formData.append('files', this.files[i]);
+                }
                 formData.append('encoding', this.encoding);
 
                 try {
