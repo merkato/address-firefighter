@@ -70,7 +70,7 @@ async def process_conversion(
     try:
         # Wczytanie pliku (Excel nie wymaga kodowania, ale zostawiamy opcję dla elastyczności)
         content = await file.read()
-        df = pd.read_excel(io.BytesIO(content))
+        df = pd.read_excel(io.BytesIO(content), engine='openpyxl')
         
         df.columns = [str(c).strip().replace('\xa0', ' ') for c in df.columns]
         

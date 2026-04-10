@@ -5,6 +5,8 @@ asyncpg
 pandas
 openpyxl
 geopandas
-pyogrio        # Szybki silnik do zapisu GeoPackage
+pyogrio        # Zapis do GeoPackage
+shapely         # Operacje geometryczne
 jinja2         # Szablony HTML
 sse-starlette
+xlrd>=2.0.1 # Do odczytu plików Excel (jeśli potrzebne)
