@@ -69,7 +69,7 @@ async def process_conversion(
     encoding: str = Form("utf-8")
 ):
     all_dataframes = []
-    try
+    try:
         for file in files:
                 content = await file.read()
                 filename = file.filename.lower()
