@@ -9,39 +9,40 @@
     <style>
         [x-cloak] { display: none !important; }
         .progress-glow { box-shadow: 0 0 15px rgba(220, 38, 38, 0.5); }
+        body { background-color: #e2e8f0; } /* Slate-200 */
     </style>
 </head>
-<body class="bg-slate-200 p-4 md:p-8 font-sans antialiased text-slate-900">
+<body class="p-4 md:p-8 font-sans antialiased text-slate-900">
 
-    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-300" x-data="app()" x-cloak>
+    <div class="w-[80%] max-w-none mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-300 mb-12" x-data="app()" x-cloak>
         
-        <header class="bg-red-700 p-6 text-white flex justify-between items-center border-b-4 border-red-900">
+        <header class="bg-red-700 p-8 text-white flex justify-between items-center border-b-8 border-red-900">
             <div>
-                <h1 class="text-3xl font-black tracking-tighter italic leading-none">SYSTEM GEOKODOWANIA PRG</h1>
-                <p class="text-red-100 text-xs font-bold uppercase tracking-[0.2em] mt-1">Fuzzy logic geocoder danych PRG</p>
+                <h1 class="text-4xl font-black tracking-tighter italic leading-none uppercase">SYSTEM GEOKODOWANIA PRG</h1>
+                <p class="text-red-100 text-sm font-bold uppercase tracking-[0.2em] mt-2">Fuzzy logic geocoder danych PRG</p>
             </div>
             <template x-if="step === 2">
-                <button @click="reset()" class="bg-red-950 hover:bg-black text-white px-4 py-2 rounded font-black text-[10px] uppercase transition-all">
+                <button @click="reset()" class="bg-red-950 hover:bg-black text-white px-6 py-3 rounded-xl font-black text-xs uppercase transition-all shadow-lg">
                     Nowe zadanie
                 </button>
             </template>
         </header>
 
-        <main class="p-6 md:p-10">
+        <main class="p-8 md:p-12">
 
-            <section x-show="step === 1" class="space-y-8 animate-in fade-in duration-500">
-                <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-8 shadow-inner">
-                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 border-b pb-2">Parametry wejściowe pliku</h3>
+            <section x-show="step === 1" class="space-y-10 animate-in fade-in duration-500">
+                <div class="bg-slate-50 border-2 border-slate-200 rounded-3xl p-10 shadow-inner">
+                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-8 border-b pb-3">Parametry wejściowe pliku</h3>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-end">
                         <div class="lg:col-span-1">
-                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Plik źródłowy (CSV/XLSX):</label>
-                            <input type="file" id="fileInput" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-slate-800 file:text-white hover:file:bg-slate-700 transition cursor-pointer border p-1 rounded-lg bg-white">
+                            <label class="block text-[11px] font-black text-slate-600 uppercase mb-3">Plik źródłowy (CSV/XLSX):</label>
+                            <input type="file" id="fileInput" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-6 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-slate-800 file:text-white hover:file:bg-slate-700 transition cursor-pointer border-2 border-slate-200 p-2 rounded-2xl bg-white">
                         </div>
 
                         <div>
-                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Separator pól:</label>
-                            <select x-model="import_settings.sep" class="w-full border-2 p-2 rounded-lg text-sm bg-white outline-none focus:border-red-600 font-medium">
+                            <label class="block text-[11px] font-black text-slate-600 uppercase mb-3">Separator pól:</label>
+                            <select x-model="import_settings.sep" class="w-full border-2 p-3 rounded-2xl text-sm bg-white outline-none focus:border-red-600 font-bold appearance-none cursor-pointer">
                                 <option value="auto">Automatyczna detekcja</option>
                                 <option value=";">Średnik (;)</option>
                                 <option value=",">Przecinek (,)</option>
@@ -51,8 +52,8 @@
                         </div>
 
                         <div>
-                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Kwalifikator tekstu:</label>
-                            <select x-model="import_settings.quote" class="w-full border-2 p-2 rounded-lg text-sm bg-white outline-none focus:border-red-600 font-medium">
+                            <label class="block text-[11px] font-black text-slate-600 uppercase mb-3">Kwalifikator tekstu:</label>
+                            <select x-model="import_settings.quote" class="w-full border-2 p-3 rounded-2xl text-sm bg-white outline-none focus:border-red-600 font-bold appearance-none cursor-pointer">
                                 <option value="&quot;">Cudzysłów (")</option>
                                 <option value="'">Apostrof (')</option>
                                 <option value="">Brak kwalifikatora</option>
@@ -60,8 +61,8 @@
                         </div>
 
                         <div>
-                            <label class="block text-[10px] font-black text-slate-600 uppercase mb-2">Kodowanie znaków:</label>
-                            <select x-model="import_settings.encoding" class="w-full border-2 p-2 rounded-lg text-sm bg-white outline-none focus:border-red-600 font-medium">
+                            <label class="block text-[11px] font-black text-slate-600 uppercase mb-3">Kodowanie znaków:</label>
+                            <select x-model="import_settings.encoding" class="w-full border-2 p-3 rounded-2xl text-sm bg-white outline-none focus:border-red-600 font-bold appearance-none cursor-pointer">
                                 <option value="utf-8">UTF-8 (Standard)</option>
                                 <option value="cp1250">Windows-1250 (PL)</option>
                                 <option value="iso-8859-2">ISO-8859-2</option>
@@ -69,75 +70,72 @@
                         </div>
                     </div>
 
-                    <div class="mt-8">
-                        <button @click="upload" class="w-full bg-red-700 hover:bg-red-600 text-white py-5 rounded-xl font-black text-xl transition-all shadow-xl shadow-red-900/20 active:scale-[0.98] uppercase tracking-tighter">
+                    <div class="mt-10">
+                        <button @click="upload" class="w-full bg-red-700 hover:bg-red-600 text-white py-6 rounded-2xl font-black text-2xl transition-all shadow-2xl shadow-red-900/20 active:scale-[0.98] uppercase tracking-tighter">
                             Wczytaj i analizuj strukturę
                         </button>
                     </div>
                 </div>
-                <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-300 pt-8">
 
-                <div class="space-y-4 bg-slate-100 p-4 rounded-lg border-l-4 border-slate-400">
-                    <h4 class="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-                        🛡️ Warunki korzystania
-                    </h4>
-                    <ul class="text-[10px] text-slate-500 space-y-2 list-disc pl-4 font-medium">
-                        <li>Dane wynikowe generowane są na podstawie Państwowego Rejestru Granic (**PRG**) udostępnianego przez GUGiK.</li>
-                        <li class="text-red-800">Aplikacja ma charakter testowy i doświadczalny. Nie powinny w niej być przetwarzane dane wrażliwe. </li>
-                        <li>System nie przechowuje trwale wczytywanych plików – przetwarzanie odbywa się w pamięci ulotnej serwera.</li>
-                        <li>Dostawca oprogramowania nie ponosi odpowiedzialności za błędy wynikające z nieścisłości w bazach źródłowych PRG.</li>
-                        <li>Użytkownik jest zobowiązany do przestrzegania obowiązujących przepisów dotyczących ochrony danych osobowych (RODO), oraz wewnętrznych regulacji dotyczących bezpieczeństwa informacji podczas korzystania z aplikacji.</li>
-                    </ul>
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-8 border-t border-slate-300 pt-10">
+                    <div class="space-y-4 bg-slate-100 p-8 rounded-2xl border-l-8 border-slate-400">
+                        <h4 class="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-3">
+                            🛡️ Warunki korzystania
+                        </h4>
+                        <ul class="text-[11px] text-slate-500 space-y-3 list-disc pl-6 font-medium leading-relaxed">
+                            <li>Dane wynikowe generowane są na podstawie Państwowego Rejestru Granic (**PRG**) udostępnianego przez GUGiK.</li>
+                            <li class="text-red-800 font-bold uppercase italic">Aplikacja ma charakter testowy i doświadczalny. Nie powinny w niej być przetwarzane dane wrażliwe. </li>
+                            <li>System nie przechowuje trwale wczytywanych plików – przetwarzanie odbywa się w pamięci ulotnej serwera.</li>
+                            <li>Dostawca oprogramowania nie ponosi odpowiedzialności za błędy wynikające z nieścisłości w bazach źródłowych PRG.</li>
+                            <li>Użytkownik jest zobowiązany do przestrzegania obowiązujących przepisów dotyczących ochrony danych osobowych (RODO), oraz wewnętrznych regulacji dotyczących bezpieczeństwa informacji podczas korzystania z aplikacji.</li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-
             </section>
             
-            <section x-show="step === 2" class="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
-                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">Mapowanie pól adresowych</h3>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <section x-show="step === 2" class="space-y-10 animate-in slide-in-from-bottom-4 duration-500">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                    <div class="lg:col-span-2 bg-slate-50 p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-3">Mapowanie pól adresowych</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Miejscowość (wymagane):</label>
-                                <select x-model="mapping.msc" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none font-semibold">
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-2">Miejscowość (wymagane):</label>
+                                <select x-model="mapping.msc" class="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-red-600 outline-none font-bold">
                                     <option value="">-- wybierz kolumnę --</option>
                                     <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Format zapisu ulicy:</label>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button @click="mapping.type = 'combined'" :class="mapping.type === 'combined' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-2 rounded font-black text-[10px] uppercase transition-all">Razem</button>
-                                    <button @click="mapping.type = 'separate'" :class="mapping.type === 'separate' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-2 rounded font-black text-[10px] uppercase transition-all">Osobno</button>
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-2">Format zapisu ulicy:</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button @click="mapping.type = 'combined'" :class="mapping.type === 'combined' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-3 rounded-xl font-black text-[11px] uppercase transition-all">Razem</button>
+                                    <button @click="mapping.type = 'separate'" :class="mapping.type === 'separate' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border'" class="py-3 rounded-xl font-black text-[11px] uppercase transition-all">Osobno</button>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-white p-4 rounded-lg border border-slate-200">
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200">
                             <template x-if="mapping.type === 'combined'">
                                 <div>
-                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ulica + Numer domu:</label>
-                                    <select x-model="mapping.ulc_combined" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none">
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-2">Ulica + Numer domu:</label>
+                                    <select x-model="mapping.ulc_combined" class="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-red-600 outline-none">
                                         <option value="">-- wybierz kolumnę --</option>
                                         <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
                                     </select>
                                 </div>
                             </template>
                             <template x-if="mapping.type === 'separate'">
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-2 gap-6">
                                     <div>
-                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ulica:</label>
-                                        <select x-model="mapping.ulc_sep" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none">
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase mb-2">Ulica:</label>
+                                        <select x-model="mapping.ulc_sep" class="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-red-600 outline-none">
                                             <option value="">-- brak kolumny --</option>
                                             <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Numer domu:</label>
-                                        <select x-model="mapping.num_sep" class="w-full border-2 p-2 rounded-lg text-sm bg-white focus:border-red-600 outline-none">
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase mb-2">Numer domu:</label>
+                                        <select x-model="mapping.num_sep" class="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-red-600 outline-none">
                                             <option value="">-- wybierz kolumnę --</option>
                                             <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
                                         </select>
@@ -147,19 +145,19 @@
                         </div>
                     </div>
 
-                    <div class="bg-blue-50 p-6 rounded-xl border border-blue-200 shadow-sm space-y-6">
-                        <h3 class="text-xs font-black text-blue-400 uppercase tracking-widest border-b border-blue-100 pb-2">Ograniczenia terytorialne</h3>
-                        <div class="space-y-4">
+                    <div class="bg-blue-50 p-8 rounded-3xl border border-blue-200 shadow-sm space-y-8">
+                        <h3 class="text-xs font-black text-blue-400 uppercase tracking-widest border-b border-blue-100 pb-3">Ograniczenia terytorialne</h3>
+                        <div class="space-y-6">
                             <div>
-                                <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Województwo:</label>
-                                <select x-model="mapping.woj" class="w-full border-2 p-2 rounded-lg text-sm bg-white border-blue-100">
+                                <label class="block text-[11px] font-bold text-blue-600 uppercase mb-2">Województwo:</label>
+                                <select x-model="mapping.woj" class="w-full border-2 p-3 rounded-xl text-sm bg-white border-blue-100">
                                     <option value="">Przeszukuj całą Polskę</option>
                                     <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Powiat:</label>
-                                <select x-model="mapping.pow" class="w-full border-2 p-2 rounded-lg text-sm bg-white border-blue-100">
+                                <label class="block text-[11px] font-bold text-blue-600 uppercase mb-2">Powiat:</label>
+                                <select x-model="mapping.pow" class="w-full border-2 p-3 rounded-xl text-sm bg-white border-blue-100">
                                     <option value="">Dowolny powiat</option>
                                     <template x-for="col in columns"><option :value="col" x-text="col"></option></template>
                                 </select>
@@ -168,25 +166,25 @@
                     </div>
                 </div>
 
-                <div class="space-y-3">
+                <div class="space-y-4">
                     <div class="flex justify-between items-end">
-                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Weryfikacja struktury (pierwsze 5 rekordów)</h3>
-                        <span class="text-[10px] font-bold text-slate-500">Razem rekordów: <span x-text="total_rows"></span></span>
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest">Weryfikacja struktury (pierwsze 5 rekordów)</h3>
+                        <span class="text-xs font-bold text-slate-500">Razem rekordów: <span x-text="total_rows" class="text-red-600"></span></span>
                     </div>
-                    <div class="overflow-x-auto rounded-xl border-2 border-slate-100 shadow-sm">
-                        <table class="min-w-full text-[11px] divide-y divide-slate-200">
-                            <thead class="bg-slate-100 text-slate-700 font-bold">
+                    <div class="overflow-x-auto rounded-2xl border-2 border-slate-100 shadow-lg">
+                        <table class="min-w-full text-xs divide-y divide-slate-200">
+                            <thead class="bg-slate-800 text-white font-bold uppercase">
                                 <tr>
                                     <template x-for="col in columns" :key="col">
-                                        <th class="px-4 py-3 text-left whitespace-nowrap" x-text="col"></th>
+                                        <th class="px-6 py-4 text-left whitespace-nowrap" x-text="col"></th>
                                     </template>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 bg-white text-slate-600 font-medium">
+                            <tbody class="divide-y divide-slate-100 bg-white text-slate-600 font-bold">
                                 <template x-for="(row, idx) in preview" :key="idx">
                                     <tr class="hover:bg-slate-50 transition-colors">
                                         <template x-for="col in columns" :key="col">
-                                            <td class="px-4 py-2" x-text="row[col]"></td>
+                                            <td class="px-6 py-3" x-text="row[col]"></td>
                                         </template>
                                     </tr>
                                 </template>
@@ -195,105 +193,109 @@
                     </div>
                 </div>
 
-                <div class="bg-slate-900 p-8 rounded-2xl text-white shadow-2xl border-t-8 border-red-700">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                <div class="bg-slate-900 p-10 rounded-[2.5rem] text-white shadow-2xl border-t-[12px] border-red-700">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-10 mb-10">
                         <div>
-                            <p class="text-red-500 text-[10px] font-black uppercase tracking-[0.3em] mb-1">Status przetwarzania</p>
-                            <h4 class="text-3xl font-bold tracking-tight italic" x-text="statusLabel()"></h4>
+                            <p class="text-red-500 text-[11px] font-black uppercase tracking-[0.4em] mb-2">Status przetwarzania</p>
+                            <h4 class="text-4xl font-bold tracking-tight italic uppercase" x-text="statusLabel()"></h4>
                         </div>
-                        <div class="grid grid-cols-2 gap-8 font-mono">
+                        <div class="grid grid-cols-2 gap-12 font-mono">
                             <div class="text-right">
-                                <p class="text-slate-500 text-[9px] uppercase font-bold">Pozytywne</p>
-                                <p class="text-3xl text-emerald-400 font-black" x-text="stats.success"></p>
+                                <p class="text-slate-500 text-[10px] uppercase font-bold tracking-widest">Pozytywne</p>
+                                <p class="text-5xl text-emerald-400 font-black" x-text="stats.success"></p>
                             </div>
-                            <div class="text-right border-l border-slate-800 pl-8">
-                                <p class="text-slate-500 text-[9px] uppercase font-bold">Odrzucone</p>
-                                <p class="text-3xl text-red-500 font-black" x-text="stats.fail"></p>
+                            <div class="text-right border-l-2 border-slate-800 pl-12">
+                                <p class="text-slate-500 text-[10px] uppercase font-bold tracking-widest">Odrzucone</p>
+                                <p class="text-5xl text-red-500 font-black" x-text="stats.fail"></p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="h-4 w-full bg-slate-800 rounded-full border border-slate-700 p-0.5 mb-10" x-show="stats.status !== 'idle'">
-                        <div class="h-full bg-red-600 rounded-full transition-all duration-300 relative shadow-[0_0_15px_rgba(220,38,38,0.4)]" :style="`width: ${stats.progress}%`">
+                    <div class="h-6 w-full bg-slate-800 rounded-full border-2 border-slate-700 p-1 mb-12" x-show="stats.status !== 'idle'">
+                        <div class="h-full bg-red-600 rounded-full transition-all duration-300 relative shadow-[0_0_20px_rgba(220,38,38,0.6)]" :style="`width: ${stats.progress}%`">
                             <div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/20 animate-pulse"></div>
                         </div>
                     </div>
 
-                    <div class="space-y-4">
-                        <button @click="process()" x-show="stats.status === 'idle'" class="w-full bg-red-700 hover:bg-red-600 py-6 rounded-xl font-black text-2xl transition-all shadow-xl active:scale-95 uppercase tracking-tighter">
+                    <div class="space-y-6">
+                        <button @click="process()" x-show="stats.status === 'idle'" class="w-full bg-red-700 hover:bg-red-600 py-8 rounded-2xl font-black text-3xl transition-all shadow-2xl active:scale-95 uppercase tracking-tighter">
                             URUCHOM GEOKODOWANIE
                         </button>
                         
                         <div x-show="stats.status === 'processing'" class="flex justify-center">
-                            <button @click="abort()" class="bg-red-900 hover:bg-red-700 border-4 border-black px-12 py-5 rounded-full font-black text-sm uppercase tracking-widest transition-all shadow-2xl animate-pulse">
+                            <button @click="abort()" class="bg-red-900 hover:bg-red-700 border-8 border-black px-16 py-6 rounded-full font-black text-lg uppercase tracking-widest transition-all shadow-2xl animate-pulse">
                                 🛑 STOP
                             </button>
                         </div>
 
-                        <div x-show="stats.status === 'completed'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <a :href="stats.gpkg_url" class="bg-emerald-600 hover:bg-emerald-500 p-5 rounded-xl text-center font-black text-xl shadow-lg flex items-center justify-center gap-3 transition-colors">
+                        <div x-show="stats.status === 'completed'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <a :href="stats.gpkg_url" class="bg-emerald-600 hover:bg-emerald-500 p-6 rounded-2xl text-center font-black text-2xl shadow-lg flex items-center justify-center gap-4 transition-colors uppercase">
                                 💾 POBIERZ GEOPACKAGE
                             </a>
-                            <a :href="stats.csv_url" class="bg-slate-800 hover:bg-slate-700 p-5 rounded-xl text-center font-black text-slate-300 text-sm flex items-center justify-center gap-3 border border-slate-700 transition-colors">
+                            <a :href="stats.csv_url" class="bg-slate-800 hover:bg-slate-700 p-6 rounded-2xl text-center font-black text-slate-300 text-sm flex items-center justify-center gap-4 border-2 border-slate-700 transition-colors uppercase">
                                 📑 LISTA ODRZUCONYCH (CSV)
                             </a>
                         </div>
                     </div>
-                </div>
-                <div class="bg-slate-900 p-8 rounded-2xl text-white shadow-2xl border-t-8 border-red-700">
-                    <div class="mt-8 pt-6 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[9px] font-mono text-slate-500 uppercase tracking-widest">License:</span>
-                            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pl" target="_blank" class="text-[9px] font-bold text-slate-400 hover:text-red-500 transition-colors">CC BY-SA 4.0</a>
+
+                    <div class="mt-12 pt-8 border-t border-slate-800 flex justify-between items-center">
+                        <div class="flex items-center gap-3 text-slate-500 text-[10px] uppercase font-bold">
+                            <span>License:</span>
+                            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pl" target="_blank" class="text-slate-400 hover:text-red-500 transition-colors">CC BY-SA 4.0</a>
                         </div>
-                        
-                        <div class="text-right">
-                            <p class="text-[10px] font-mono text-slate-500 italic">
-                                Z dużą ilością kawy, <span class="text-slate-300 font-bold">SQ9NIT</span>, 2026
-                            </p>
-                        </div>
+                        <p class="text-[10px] font-mono text-slate-500 italic">
+                            Z dużą ilością kawy, <span class="text-slate-300 font-bold tracking-widest">SQ9NIT</span>, 2026
+                        </p>
                     </div>
                 </div>
             </section>
         </main>
     </div>
-    <div x-data="konwerterApp()" class="max-w-4xl mx-auto py-10 px-4">
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
-            <div class="bg-slate-900 p-8 text-white border-b-8 border-red-700">
-                <div class="flex items-center gap-4">
-                    <div class="bg-red-700 p-3 rounded-xl animate-pulse">
-                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+
+    <div x-data="konwerterApp()" class="w-[80%] max-w-none mx-auto py-10 mb-20" x-cloak>
+        <div class="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-300">
+            
+            <div class="bg-slate-900 p-8 text-white border-b-[10px] border-red-700">
+                <div class="flex items-center gap-6">
+                    <div class="bg-red-700 p-4 rounded-2xl shadow-lg animate-pulse shadow-red-900/30">
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-black tracking-tighter uppercase italic">Konwerter DMS <span class="text-red-600">GIS</span></h1>
-                        <p class="text-slate-400 font-mono text-xs uppercase tracking-widest">Excel -> GeoPackage (EPSG:4326)</p>
+                        <h1 class="text-4xl font-black tracking-tighter uppercase italic leading-none">Konwerter  <span class="text-red-600">SWD -> GIS</span></h1>
+                        <p class="text-slate-400 font-mono text-sm uppercase tracking-[0.3em] mt-2 font-bold">Excel -> GeoPackage (EPSG:4326)</p>
                     </div>
                 </div>
             </div>
 
-            <div class="p-8 space-y-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">Plik wejściowy (Excel)</label>
-                        <input type="file" @change="file = $event.target.files[0]" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" />
+            <div class="p-10 md:p-14 space-y-12 bg-white">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div class="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100">
+                        <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Plik wejściowy (Excel)</label>
+                        <input type="file" @change="file = $event.target.files[0]" 
+                               class="w-full text-sm text-slate-500 file:mr-6 file:py-3 file:px-8 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-slate-900 file:text-white hover:file:bg-red-700 transition-all cursor-pointer border-2 border-dashed border-slate-200 p-3 rounded-2xl" />
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">Kodowanie znaków</label>
-                        <select x-model="encoding" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-sm font-bold focus:border-red-500 focus:outline-none transition-all">
-                            <option value="utf-8">UTF-8</option>
-                            <option value="windows-1250">Windows-1250 (CP1252)</option>
+                    <div class="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100">
+                        <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Kodowanie znaków</label>
+                        <select x-model="encoding" class="w-full bg-white border-2 border-slate-200 rounded-2xl p-4 text-sm font-black focus:border-red-600 focus:outline-none transition-all appearance-none cursor-pointer">
+                            <option value="utf-8">UTF-8 (Standard Globalny)</option>
+                            <option value="windows-1250">Windows-1250 (Polskie znaki)</option>
                         </select>
                     </div>
                 </div>
 
-                <div class="pt-6">
+                <div class="pt-4">
                     <button @click="convert" :disabled="!file || loading" 
-                            class="w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-3"
-                            :class="loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-800 text-white transform hover:-translate-y-1 active:scale-95'">
-                        <span x-show="!loading">Uruchom konwersję</span>
-                        <span x-show="loading" class="flex items-center gap-2 italic">
-                            <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            Przetwarzanie...
+                            class="w-full py-8 rounded-[2rem] font-black uppercase text-2xl tracking-tighter transition-all shadow-2xl flex items-center justify-center gap-4"
+                            :class="loading ? 'bg-slate-400 cursor-not-allowed shadow-none' : 'bg-red-700 hover:bg-red-800 text-white transform hover:-translate-y-2 active:scale-95 shadow-red-900/30'">
+                        <span x-show="!loading" class="flex items-center gap-4">
+                            URUCHOM KONWERSJĘ PLIKU
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                        </span>
+                        <span x-show="loading" class="flex items-center gap-4 italic animate-pulse text-xl">
+                            <svg class="animate-spin h-8 w-8 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            TRWA PRZETWARZANIE GEOPRZESTRZENNE...
                         </span>
                     </button>
                 </div>
@@ -308,121 +310,108 @@
             encoding: 'utf-8',
             loading: false,
             async convert() {
+                if(!this.file) return;
                 this.loading = true;
                 const formData = new FormData();
                 formData.append('file', this.file);
                 formData.append('encoding', this.encoding);
-
                 try {
-                    const response = await fetch('/konwerter/process', {
-                        method: 'POST',
-                        body: formData
-                    });
-
+                    const response = await fetch('/konwerter/process', { method: 'POST', body: formData });
                     if (!response.ok) throw new Error('Błąd konwersji');
-
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = this.file.name.split('.')[0] + ".gpkg";
+                    a.download = this.file.name.split('.')[0] + "_GIS.gpkg";
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
-                } catch (err) {
-                    alert('Błąd: ' + err.message);
-                } finally {
-                    this.loading = false;
-                }
+                } catch (err) { alert('Błąd: ' + err.message); } 
+                finally { this.loading = false; }
             }
         }
     }
-    </script>
 
-    <script>
-        function app() {
-            return {
-                step: 1, 
-                columns: [], 
-                preview: [], 
-                total_rows: 0,
-                import_settings: { sep: 'auto', quote: '"', encoding: 'utf-8' },
-                mapping: { type: 'combined', msc: '', ulc_combined: '', ulc_sep: '', num_sep: '', woj: '', pow: '' },
-                stats: { status: 'idle', progress: 0, success: 0, fail: 0, job_id: null, gpkg_url: '', csv_url: '' },
+    function app() {
+        return {
+            step: 1, 
+            columns: [], 
+            preview: [], 
+            total_rows: 0,
+            import_settings: { sep: 'auto', quote: '"', encoding: 'utf-8' },
+            mapping: { type: 'combined', msc: '', ulc_combined: '', ulc_sep: '', num_sep: '', woj: '', pow: '' },
+            stats: { status: 'idle', progress: 0, success: 0, fail: 0, job_id: null, gpkg_url: '', csv_url: '' },
+            
+            async upload() {
+                const fileInput = document.getElementById('fileInput');
+                const file = fileInput.files[0];
+                if (!file) { alert("Brak pliku."); return; }
+                let fd = new FormData();
+                fd.append('file', file);
+                fd.append('sep', this.import_settings.sep);
+                fd.append('quote', this.import_settings.quote);
+                fd.append('encoding', this.import_settings.encoding);
+                try {
+                    let res = await fetch('/preview', { method: 'POST', body: fd });
+                    if (!res.ok) throw new Error();
+                    let data = await res.json();
+                    this.columns = data.columns;
+                    this.preview = data.sample;
+                    this.total_rows = data.total_rows;
+                    this.step = 2;
+                } catch (err) { alert("Błąd analizy pliku."); }
+            },
+
+            async process() {
+                const fileInput = document.getElementById('fileInput');
+                let fd = new FormData();
+                fd.append('file', fileInput.files[0]);
+                fd.append('mapping_type', this.mapping.type);
+                fd.append('msc_col', this.mapping.msc);
+                fd.append('ulc_col', this.mapping.type === 'combined' ? this.mapping.ulc_combined : this.mapping.ulc_sep);
+                fd.append('num_col', this.mapping.num_sep);
+                fd.append('woj_col', this.mapping.woj);
+                fd.append('pow_col', this.mapping.pow);
+                fd.append('sep', this.import_settings.sep);
+                fd.append('quote', this.import_settings.quote);
+                fd.append('encoding', this.import_settings.encoding);
                 
-                async upload() {
-                    const fileInput = document.getElementById('fileInput');
-                    const file = fileInput.files[0];
-                    if (!file) { alert("Brak pliku. Proszę wskazać plik źródłowy."); return; }
-                    
-                    let fd = new FormData();
-                    fd.append('file', file);
-                    fd.append('sep', this.import_settings.sep);
-                    fd.append('quote', this.import_settings.quote);
-                    fd.append('encoding', this.import_settings.encoding);
-
-                    try {
-                        let res = await fetch('/preview', { method: 'POST', body: fd });
-                        if (!res.ok) throw new Error();
-                        let data = await res.json();
-                        this.columns = data.columns;
-                        this.preview = data.sample;
-                        this.total_rows = data.total_rows;
-                        this.step = 2;
-                    } catch (err) { alert("Błąd analizy pliku. Sprawdź separator i kodowanie."); }
-                },
-
-                async process() {
-                    const fileInput = document.getElementById('fileInput');
-                    let fd = new FormData();
-                    fd.append('file', fileInput.files[0]);
-                    fd.append('mapping_type', this.mapping.type);
-                    fd.append('msc_col', this.mapping.msc);
-                    fd.append('ulc_col', this.mapping.type === 'combined' ? this.mapping.ulc_combined : this.mapping.ulc_sep);
-                    fd.append('num_col', this.mapping.num_sep);
-                    fd.append('woj_col', this.mapping.woj);
-                    fd.append('pow_col', this.mapping.pow);
-                    fd.append('sep', this.import_settings.sep);
-                    fd.append('quote', this.import_settings.quote);
-                    fd.append('encoding', this.import_settings.encoding);
-                    
-                    let res = await fetch('/start-geocoding', { method: 'POST', body: fd });
-                    let { job_id } = await res.json();
-                    this.stats.job_id = job_id;
-                    this.stats.status = 'processing';
-
-                    const es = new EventSource(`/stream-progress/${job_id}`);
-                    es.onmessage = (e) => {
-                        const data = JSON.parse(e.data);
-                        this.stats.progress = data.progress;
-                        this.stats.success = data.success;
-                        this.stats.fail = data.fail;
-                        this.stats.status = data.status;
-                        if (['completed', 'cancelled', 'failed'].includes(data.status)) {
-                            this.stats.gpkg_url = data.gpkg_url;
-                            this.stats.csv_url = data.csv_url;
-                            es.close();
-                        }
-                    };
-                },
-
-                async abort() {
-                    if (confirm("Potwierdź natychmiastowe przerwanie operacji.")) {
-                        await fetch(`/cancel-job/${this.stats.job_id}`, { method: 'POST' });
+                let res = await fetch('/start-geocoding', { method: 'POST', body: fd });
+                let { job_id } = await res.json();
+                this.stats.job_id = job_id;
+                this.stats.status = 'processing';
+                const es = new EventSource(`/stream-progress/${job_id}`);
+                es.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    this.stats.progress = data.progress;
+                    this.stats.success = data.success;
+                    this.stats.fail = data.fail;
+                    this.stats.status = data.status;
+                    if (['completed', 'cancelled', 'failed'].includes(data.status)) {
+                        this.stats.gpkg_url = data.gpkg_url;
+                        this.stats.csv_url = data.csv_url;
+                        es.close();
                     }
-                },
+                };
+            },
 
-                statusLabel() {
-                    if (this.stats.status === 'idle') return 'Oczekiwanie na rozkaz';
-                    if (this.stats.status === 'processing') return `Akcja w toku...`;
-                    if (this.stats.status === 'completed') return 'Zadanie ukończone';
-                    if (this.stats.status === 'cancelled') return 'Przerwano operację';
-                    return 'Błąd krytyczny';
-                },
+            async abort() {
+                if (confirm("Potwierdź natychmiastowe przerwanie operacji.")) {
+                    await fetch(`/cancel-job/${this.stats.job_id}`, { method: 'POST' });
+                }
+            },
 
-                reset() { location.reload(); }
-            }
+            statusLabel() {
+                if (this.stats.status === 'idle') return 'Oczekiwanie na rozkaz';
+                if (this.stats.status === 'processing') return `Akcja w toku...`;
+                if (this.stats.status === 'completed') return 'Zadanie ukończone';
+                if (this.stats.status === 'cancelled') return 'Przerwano operację';
+                return 'Błąd krytyczny';
+            },
+
+            reset() { location.reload(); }
         }
+    }
     </script>
 </body>
 </html>
