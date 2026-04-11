@@ -171,7 +171,6 @@ async def process_conversion(
                     media_type="application/geopackage+sqlite3",
                     filename="zestawienie_GIS.gpkg"
                 )
-
         except Exception as e:
             # W razie błędu też sprzątamy
             cleanup_temp_file(temp_gpkg_path)
