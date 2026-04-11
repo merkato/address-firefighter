@@ -324,7 +324,8 @@
             availableColumns: [], 
             useCategory: false,   
             selectedField: '',    
-            exportKml: false,     
+            exportKml: false,
+            generatedMapUrl: '',     
             loading: false,       
 
             async analyzeFiles(event) {
@@ -347,12 +348,9 @@
             async convert() {
                 if (this.files.length === 0) { alert("Wybierz pliki!"); return; }
                 this.loading = true;
+                this.generatedMapUrl = '';
                 const response = await fetch('/konwerter/process', { method: 'POST', body: formData });
-                const mapUrl = response.headers.get('X-Map-URL');
-
-                if (mapUrl) {
-                    this.generatedMapUrl = mapUrl; // Dodaj to do data() w Alpine.js
-                }
+                
                 const formData = new FormData();
                 for (let i = 0; i < this.files.length; i++) {
                     formData.append('files', this.files[i]);
@@ -364,7 +362,11 @@
                 try {
                     const response = await fetch('/konwerter/process', { method: 'POST', body: formData });
                     if (!response.ok) throw new Error('Błąd serwera');
+                    const mapUrl = response.headers.get('X-Map-URL');
 
+                    if (mapUrl) {
+                        this.generatedMapUrl = mapUrl; 
+                    }
                     // WYCIĄGANIE NAZWY PLIKU Z NAGŁÓWKA
                     const disposition = response.headers.get('Content-Disposition');
                     let fileName = this.exportKml ? 'paczka_GIS.zip' : 'zestawienie.gpkg';
@@ -377,7 +379,7 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = fileName; // Teraz nazwa jest zgodna z tym, co wysłał Python
+                    a.download = fileName; // 
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
