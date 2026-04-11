@@ -71,9 +71,7 @@ def cleanup_temp_file(path: str):
         elif os.path.isdir(path):
             shutil.rmtree(path)
 
-def create_kml(gdf, category_field=None):
-    # Tworzymy KML BEZ deklaracji xmlns, jeśli standardowa zawodzi
-    # To wymusi na parserze JS traktowanie tagów jako zwykłych elementów
+def create_kml(gdf, category_field='Rodzaj'):
     kml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<kml>',
@@ -81,17 +79,33 @@ def create_kml(gdf, category_field=None):
     ]
 
     for _, row in gdf.iterrows():
-        # Współrzędne muszą być kropką rozdzielone
+        # Logika wyciągania głównej kategorii (P, MZ, AF)
+        rodzaj_raw = str(row.get(category_field, ''))
+        # split('/') bierze to co przed znakiem, np. z "MZ/L" zrobi "MZ"
+        main_cat = rodzaj_raw.split('/')[0].strip().upper()
+        
+        # Współrzędne
         lon = f"{row['lon_dd']}".replace(',', '.')
         lat = f"{row['lat_dd']}".replace(',', '.')
         
-        name = html.escape(str(row.get('Data', 'Zdarzenie')))
-        # Krótki opis, żeby nie przeładować parsera
-        miejsce = html.escape(str(row.get('Miejsce zdarzenia', 'Brak adresu')))
+        # Tytuł punktu - data i godzina
+        name = html.escape(str(row.get('Data i godzina przyjęcia zgłoszenia', 'Zdarzenie')))
+        
+        # Budujemy bogaty opis do popupu
+        desc_html = [
+            f"<b>Rodzaj:</b> {html.escape(rodzaj_raw)}",
+            f"<b>Miejsce:</b> {html.escape(str(row.get('Miejsce zdarzenia', 'Brak adresu')))}",
+            f"<b>Jednostka:</b> {html.escape(str(row.get('Jednostka', '-')))}",
+            f"<b>Zastępy:</b> {html.escape(str(row.get('Zastępy', '0')))}"
+        ]
+        
+        # Łączymy opis w jeden string (używamy CDATA, żeby Leaflet nie zgłupiał od tagów HTML)
+        description = "<![CDATA[" + "<br>".join(desc_html) + "]]>"
         
         kml.append('<Placemark>')
         kml.append(f'<name>{name}</name>')
-        kml.append(f'<description>{miejsce}</description>')
+        kml.append(f'<description>{description}</description>')
+        kml.append(f'<ExtendedData><Data name="type"><value>{main_cat}</value></Data></ExtendedData>')
         kml.append('<Point>')
         kml.append(f'<coordinates>{lon},{lat},0</coordinates>')
         kml.append('</Point>')
@@ -248,8 +262,6 @@ async def process_conversion(
 
 @router_konwerter.get("/m/{map_id}", response_class=HTMLResponse)
 async def share_map(map_id: str):
-    # Tytuł zmieniony na "Mapa zdarzeń z zestawienia SWD"
-    # Wszystkie klamry JS/CSS są podwojone, żeby VS Code i Python byli szczęśliwi
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -259,87 +271,73 @@ async def share_map(map_id: str):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <style>
-            #map {{ 
-                height: 100vh; 
-                width: 100%; 
-                background: #f3f4f6; 
-            }}
+            #map {{ height: 100vh; width: 100%; background: #f3f4f6; }}
             body {{ margin: 0; padding: 0; }}
-            .leaflet-popup-content {{ font-family: sans-serif; font-size: 12px; }}
+            .popup-box {{ font-family: sans-serif; font-size: 13px; line-height: 1.5; }}
+            .popup-box b {{ color: #b91c1c; }}
         </style>
     </head>
     <body>
         <div id="map"></div>
-
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <script src="https://unpkg.com/leaflet-plugins@3.4.0/layer/vector/KML.js"></script>
-
         <script>
             var map = L.map('map').setView([52.2, 19.2], 6);
+            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png').addTo(map);
 
-            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-                maxZoom: 19,
-                attribution: '&copy; OSM'
-            }}).addTo(map);
+            // Funkcja do dobierania koloru ikony
+            function getIcon(type) {{
+                var color = "blue"; // domyślny
+                if (type === "P") color = "red";
+                if (type === "MZ") color = "orange";
+                if (type === "AF") color = "black";
+                
+                return new L.Icon({{
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-' + color + '.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                }});
+            }}
 
-            console.log("Ładowanie danych: {map_id}");
-            
             fetch('/data/maps/{map_id}.kml')
-                .then(res => {{
-                    if (!res.ok) throw new Error('Mapa nie istnieje.');
-                    return res.text();
-                }})
+                .then(res => res.text())
                 .then(kmltext => {{
                     var parser = new DOMParser();
-                    var kmlXml = parser.parseFromString(kmltext.trim(), 'text/xml');
-                    
-                    if (kmlXml.querySelector('parsererror')) {{
-                        console.error("Błąd parsera XML");
-                        return;
-                    }}
+                    var xml = parser.parseFromString(kmltext.trim(), 'text/xml');
+                    var placemarks = xml.getElementsByTagName('Placemark');
+                    var markers = [];
 
-                    try {{
-                        var track = new L.KML(kmlXml);
-                        map.addLayer(track);
-                        
-                        var layers = track.getLayers();
-                        if (layers.length > 0) {{
-                            map.fitBounds(track.getBounds(), {{ padding: [30, 30] }});
-                        }} else {{
-                            var placemarks = kmlXml.getElementsByTagName('Placemark');
-                            var markers = [];
+                    for (var i = 0; i < placemarks.length; i++) {{
+                        try {{
+                            // Wyciągamy dane
+                            var name = placemarks[i].getElementsByTagName('name')[0].textContent;
+                            var desc = placemarks[i].getElementsByTagName('description')[0].textContent;
+                            
+                            // Wyciągamy kategorię z ExtendedData
+                            var type = "MZ"; 
+                            var extData = placemarks[i].getElementsByTagName('value');
+                            if (extData.length > 0) type = extData[0].textContent;
 
-                            for (var i = 0; i < placemarks.length; i++) {{
-                                try {{
-                                    var nameNodes = placemarks[i].getElementsByTagName('name');
-                                    var name = nameNodes.length > 0 ? nameNodes[0].textContent : "Zdarzenie";
-                                    
-                                    var coordNodes = placemarks[i].getElementsByTagName('coordinates');
-                                    if (coordNodes.length > 0) {{
-                                        var coords = coordNodes[0].textContent.split(',');
-                                        var lng = parseFloat(coords[0]);
-                                        var lat = parseFloat(coords[1]);
-                                        
-                                        if (!isNaN(lat) && !isNaN(lng)) {{
-                                            var m = L.marker([lat, lng]).addTo(map).bindPopup("<b>" + name + "</b>");
-                                            markers.push(m);
-                                        }}
-                                    }}
-                                }} catch(e) {{ 
-                                    console.error("Błąd punktu:", e); 
-                                }}
+                            var coords = placemarks[i].getElementsByTagName('coordinates')[0].textContent.split(',');
+                            var lng = parseFloat(coords[0]);
+                            var lat = parseFloat(coords[1]);
+
+                            if (!isNaN(lat) && !isNaN(lng)) {{
+                                var m = L.marker([lat, lng], {{ icon: getIcon(type) }})
+                                         .addTo(map)
+                                         .bindPopup('<div class="popup-box"><b>' + name + '</b><hr>' + desc + '</div>');
+                                markers.push(m);
                             }}
+                        }} catch(e) {{ console.error("Błąd punktu:", e); }}
+                    }
 
-                            if (markers.length > 0) {{
-                                var group = new L.featureGroup(markers);
-                                map.fitBounds(group.getBounds(), {{ padding: [30, 30] }});
-                            }}
-                        }}
-                    }} catch (e) {{
-                        console.error("Błąd mapy:", e);
+                    if (markers.length > 0) {{
+                        var group = new L.featureGroup(markers);
+                        map.fitBounds(group.getBounds(), {{ padding: [40, 40] }});
                     }}
-                }})
-                .catch(err => console.error("Błąd ładowania:", err));
+                }});
         </script>
     </body>
     </html>
