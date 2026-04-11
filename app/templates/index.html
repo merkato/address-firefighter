@@ -350,16 +350,25 @@
 
                 try {
                     const response = await fetch('/konwerter/process', { method: 'POST', body: formData });
-                    if (!response.ok) throw new Error('Błąd serwera przy konwersji');
+                    if (!response.ok) throw new Error('Błąd serwera');
+
+                    // WYCIĄGANIE NAZWY PLIKU Z NAGŁÓWKA
+                    const disposition = response.headers.get('Content-Disposition');
+                    let fileName = this.exportKml ? 'paczka_GIS.zip' : 'zestawienie.gpkg';
                     
+                    if (disposition && disposition.includes('filename=')) {
+                        fileName = disposition.split('filename=')[1].replace(/"/g, '');
+                    }
+
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = "paczka_GIS_SWD.zip"; 
+                    a.download = fileName; // Teraz nazwa jest zgodna z tym, co wysłał Python
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
+                    window.URL.revokeObjectURL(url);
                 } catch (err) { 
                     alert('Błąd: ' + err.message); 
                 } finally { 

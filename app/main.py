@@ -153,13 +153,17 @@ async def process_conversion(
                                         headers={"Content-Disposition": "attachment; filename=paczka_GIS.zip"})
             
             else:
-                # Jeśli tylko GPKG, czytamy go do pamięci i wysyłamy
-                with open(gpkg_path, "rb") as f:
-                    gpkg_data = f.read()
-                
-                return StreamingResponse(io.BytesIO(gpkg_data), media_type="application/geopackage+sqlite3",
-                                        headers={"Content-Disposition": "attachment; filename=zestawienie_GIS.gpkg"})
+                # Wysyłka samego pliku GPKG
+                def iterfile():
+                    with open(gpkg_path, "rb") as f:
+                        yield from f
 
+                return StreamingResponse(
+                    iterfile(), 
+                    media_type="application/geopackage+sqlite3",
+                    headers={"Content-Disposition": "attachment; filename=zestawienie_GIS.gpkg"}
+                )
+    
     except Exception as e:
         import traceback
         print(traceback.format_exc())
