@@ -7,12 +7,13 @@ import asyncpg
 import pandas as pd
 import geopandas as gpd
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from shapely.geometry import Point
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, Request, HTTPException, BackgroundTasks
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from sse_starlette.sse import EventSourceResponse
+import zipfile
 
 app = FastAPI(title="System Geokodowania PRG")
 templates = Jinja2Templates(directory="templates")
@@ -63,63 +64,96 @@ async def index(request: Request):
 
 router_konwerter = APIRouter(tags=["Konwerter GIS"])
 
+@router_konwerter.post("/konwerter/analyze")
+async def analyze_columns(file: UploadFile = File(...)):
+    """Skan pliku XLS w celu wyciągnięcia nazw kolumn dla UI."""
+    try:
+        content = await file.read()
+        filename = file.filename.lower()
+        
+        if filename.endswith('.xls'):
+            df = pd.read_excel(io.BytesIO(content), engine='xlrd', nrows=5)
+        else:
+            df = pd.read_excel(io.BytesIO(content), engine='openpyxl', nrows=5)
+            
+        # Czyszczenie nazw kolumn (strip i twarde spacje)
+        cols = [str(c).strip().replace('\xa0', ' ') for c in df.columns]
+        return {"columns": cols}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Błąd analizy struktury: {str(e)}")
+
 @router_konwerter.post("/konwerter/process")
 async def process_conversion(
+    """Przeksztalcenie plików XLS do GPKG z konwersją współrzędnych DMS -> DD."""
     files: List[UploadFile] = File(...), # Przyjmujemy listę plików
+    category_field: Optional[str] = Form(None), # Pole do rozbicia warstw/stylizacji
+    export_kml: bool = Form(False), # Flaga dla mapy/KML
     encoding: str = Form("utf-8")
 ):
-    all_dataframes = []
+all_dfs = []
     try:
         for file in files:
-                content = await file.read()
-                filename = file.filename.lower()
-                
-                # Identyfikacja i wczytywanie (tak jak wcześniej)
-                if filename.endswith('.xls'):
-                    df = pd.read_excel(io.BytesIO(content), engine='xlrd')
-                else:
-                    df = pd.read_excel(io.BytesIO(content), engine='openpyxl')
+            content = await file.read()
+            # Wybór silnika jak wcześniej
+            if file.filename.lower().endswith('.xls'):
+                df = pd.read_excel(io.BytesIO(content), engine='xlrd')
+            else:
+                df = pd.read_excel(io.BytesIO(content), engine='openpyxl')
+            
+            df.columns = [str(c).strip().replace('\xa0', ' ') for c in df.columns]
+            
+            # Mapowanie współrzędnych
+            lat_col = next((c for c in df.columns if c.lower() == 'szerokość geo.'), None)
+            lon_col = next((c for c in df.columns if c.lower() == 'długość geo.'), None)
+            
+            if lat_col and lon_col:
+                df['lat_dd'] = df[lat_col].apply(parse_dms)
+                df['lon_dd'] = df[lon_col].apply(parse_dms)
+                all_dfs.append(df.dropna(subset=['lat_dd', 'lon_dd']))
 
-                # Czyszczenie nazw kolumn
-                df.columns = [str(c).strip().replace('\xa0', ' ') for c in df.columns]
-                
-                # Szukanie kolumn (DMS -> DD)
-                lat_col = next((c for c in df.columns if c.lower() == 'szerokość geo.'), None)
-                lon_col = next((c for c in df.columns if c.lower() == 'długość geo.'), None)
+        if not all_dfs:
+            raise HTTPException(status_code=400, detail="Brak poprawnych danych do konwersji.")
 
-                if lat_col and lon_col:
-                    df['lat_dd'] = df[lat_col].apply(parse_dms)
-                    df['lon_dd'] = df[lon_col].apply(parse_dms)
-                    # Czyścimy rekordy bez współrzędnych
-                    df = df.dropna(subset=['lat_dd', 'lon_dd'])
-                    all_dataframes.append(df)
-
-        if not all_dataframes:
-            raise HTTPException(status_code=400, detail="Nie udało się przetworzyć żadnego z plików.")
-
-            # ŁĄCZENIE PLIKÓW
-        final_df = pd.concat(all_dataframes, ignore_index=True)
-
-            # Tworzenie geometrii
+        final_df = pd.concat(all_dfs, ignore_index=True)
         geometry = [Point(xy) for xy in zip(final_df['lon_dd'], final_df['lat_dd'])]
         gdf = gpd.GeoDataFrame(final_df, geometry=geometry, crs="EPSG:4326")
-            
-        buffer = io.BytesIO()
-            # FIX NAZWY WARSTWY: dodajemy parametr layer, żeby pozbyć się hasha
-        gdf.to_file(buffer, driver="GPKG", engine="pyogrio", layer="zestawienie_swd")
-        buffer.seek(0)
+
+        # PRZYGOTOWANIE WYNIKU (ZIP jeśli KML + GPKG, lub samo GPKG)
+        buffer_zip = io.BytesIO()
         
+        with zipfile.ZipFile(buffer_zip, "w") as zf:
+            # 1. Tworzenie GeoPackage
+            gpkg_buffer = io.BytesIO()
+            
+            # 2 LOGIKA KATEGORYZACJI
+            if category_field and category_field in gdf.columns:
+                # Rozbijamy na osobne warstwy wewnątrz jednego GPKG
+                for val, group in gdf.groupby(category_field):
+                    clean_name = re.sub(r'[^\w]', '_', str(val))[:30]
+                    group.to_file(gpkg_buffer, driver="GPKG", engine="pyogrio", layer=clean_name)
+            else:
+                gdf.to_file(gpkg_buffer, driver="GPKG", engine="pyogrio", layer="zestawienie_zbiorcze")
+            
+            gpkg_buffer.seek(0)
+            zf.writestr("zestawienie_SWD.gpkg", gpkg_buffer.read())
+
+            # 3. Logika pod KML / Map Maker
+            if export_kml:
+                # Tutaj wstawimy funkcję generującą stylizowany KML
+                # Na razie placeholder dla struktury ZIP
+                zf.writestr("podglad_swd_mapa.kml", b"<?xml version='1.0' encoding='UTF-8'?><kml>...</kml>")
+
+        buffer_zip.seek(0)
         return StreamingResponse(
-            buffer,
-            media_type="application/geopackage+sqlite3",
-            headers={"Content-Disposition": "attachment; filename=zestawienie_swd.gpkg"}
+            buffer_zip,
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment; filename=paczka_wynikowa_GIS.zip"}
         )
 
     except Exception as e:
-        # Logowanie błędu do konsoli kontenera
         import traceback
         print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Błąd przetwarzania: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     
 @app.post("/preview")
 async def preview(

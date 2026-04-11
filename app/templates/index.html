@@ -254,6 +254,36 @@
                     <span x-show="loading" class="animate-pulse italic uppercase">Trwa przetwarzanie danych...</span>
                 </button>
             </div>
+            <div x-show="availableColumns.length > 0" x-transition class="mt-6 space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <div class="flex items-center justify-between bg-white p-3 rounded-lg border shadow-sm">
+                        <span class="text-[10px] font-black text-slate-600 uppercase italic">Rozbij na warstwy</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" x-model="useCategory" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-emerald-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between bg-white p-3 rounded-lg border shadow-sm">
+                        <span class="text-[10px] font-black text-slate-600 uppercase italic">Mapa KML (Google)</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" x-model="exportKml" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div x-show="useCategory" x-transition class="pt-2 animate-pulse-once">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-1 ml-1">Wybierz pole atrybutowe:</label>
+                    <select x-model="selectedField" class="w-full border-2 border-emerald-100 p-2 rounded-lg text-xs font-bold bg-white outline-none focus:border-emerald-500 transition-colors">
+                        <option value="">-- wybierz kolumnę kategoryzacji --</option>
+                        <template x-for="col in availableColumns">
+                            <option :value="col" x-text="col"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -273,39 +303,51 @@
     function konwerterApp() {
         return {
             files: [],
-            encoding: 'utf-8',
+            availableColumns: [],
+            useCategory: false,
+            selectedField: '',
+            exportKml: false,
             loading: false,
+
+            async analyzeFiles(event) {
+                this.files = event.target.files;
+                if (this.files.length === 0) return;
+                
+                const formData = new FormData();
+                formData.append('file', this.files[0]); // Analizujemy pierwszy plik z brzegu
+
+                try {
+                    const res = await fetch('/konwerter/analyze', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    this.availableColumns = data.columns;
+                } catch (err) {
+                    console.error("Analiza nieudana");
+                }
+            },
+
             async convert() {
-                if(!this.files.length === 0) { alert("Wybierz przynajmniej jeden plik!"); return; }
                 this.loading = true;
                 const formData = new FormData();
                 for (let i = 0; i < this.files.length; i++) {
                     formData.append('files', this.files[i]);
                 }
-                formData.append('encoding', this.encoding);
+                formData.append('category_field', this.useCategory ? this.selectedField : '');
+                formData.append('export_kml', this.exportKml);
 
                 try {
-                    const response = await fetch('/konwerter/process', { 
-                        method: 'POST', 
-                        body: formData 
-                    });
-
-                    if (!response.ok) throw new Error('Błąd konwersji. Sprawdź czy plik ma kolumny: Szerokość geo. i Długość geo.');
-
+                    const response = await fetch('/konwerter/process', { method: 'POST', body: formData });
+                    if (!response.ok) throw new Error('Błąd serwera');
+                    
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = "zestawienie_zbiorcze_SWD.gpkg";
+                    a.download = "paczka_GIS_SWD.zip";
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
-                    window.URL.revokeObjectURL(url);
-                } catch (err) { 
-                    alert('Błąd: ' + err.message); 
-                } finally { 
-                    this.loading = false; 
-                }
+                } catch (err) { alert(err.message); }
+                finally { this.loading = false; }
             }
         }
     }
