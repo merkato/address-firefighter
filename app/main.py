@@ -331,7 +331,7 @@ async def share_map(map_id: str):
                                 markers.push(m);
                             }}
                         }} catch(e) {{ console.error("Błąd punktu:", e); }}
-                    }
+                    }}
 
                     if (markers.length > 0) {{
                         var group = new L.featureGroup(markers);
