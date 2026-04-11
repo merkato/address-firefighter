@@ -72,61 +72,35 @@ def cleanup_temp_file(path: str):
             shutil.rmtree(path)
 
 def create_kml(gdf, category_field=None):
-    # Paleta kolorów (format KML: aabbggrr)
-    colors = {
-        'P': 'ff0000ff',  # Pożar - Czerwony
-        'MZ': 'ffff0000', # Miejscowe - Niebieski
-        'AF': 'ff00ffff', # Alarm fałszywy - Żółty
-    }
-
-    # Budujemy nagłówek bez ŻADNYCH spacji na początku stringa
+    # Tworzymy KML BEZ deklaracji xmlns, jeśli standardowa zawodzi
+    # To wymusi na parserze JS traktowanie tagów jako zwykłych elementów
     kml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<kml xmlns="http://www.opengis.net/kml/2.2">',
-        '<Document>',
-        '<name>Eksport SWD</name>'
+        '<kml>',
+        '<Document>'
     ]
 
-    # Definiujemy style na początku
-    for key, color in colors.items():
-        kml.append(f'''<Style id="style_{key}">
-            <IconStyle>
-                <color>{color}</color>
-                <scale>1.1</scale>
-                <Icon><href>https://maps.google.com/mapfiles/kml/paddle/wht-blank.png</href></Icon>
-            </IconStyle>
-        </Style>''')
-
     for _, row in gdf.iterrows():
-        # Pobieramy kategorię dla koloru (np. z pola Rodzaj: MZ/L -> MZ)
-        rodzaj = str(row.get(category_field, ''))[:2] if category_field else 'P'
-        style_id = f"style_{rodzaj}" if rodzaj in colors else "style_P"
+        # Współrzędne muszą być kropką rozdzielone
+        lon = f"{row['lon_dd']}".replace(',', '.')
+        lat = f"{row['lat_dd']}".replace(',', '.')
         
-        name = html.escape(str(row.get('Data', 'Punkt')))
+        name = html.escape(str(row.get('Data', 'Zdarzenie')))
+        # Krótki opis, żeby nie przeładować parsera
+        miejsce = html.escape(str(row.get('Miejsce zdarzenia', 'Brak adresu')))
         
-        # Tworzymy opis
-        desc_data = []
-        for k, v in row.items():
-            if k not in ['geometry', 'lat_dd', 'lon_dd']:
-                desc_data.append(f"<b>{html.escape(str(k))}:</b> {html.escape(str(v))}")
-        description = "<br/>".join(desc_data)
-
-        placemark = (
-            "<Placemark>"
-            f"<name>{name}</name>"
-            f"<description><![CDATA[{description}]]></description>"
-            f"<styleUrl>#{style_id}</styleUrl>"
-            "<Point>"
-            f"<coordinates>{row['lon_dd']},{row['lat_dd']},0</coordinates>"
-            "</Point>"
-            "</Placemark>"
-        )
-        kml.append(placemark)
+        kml.append('<Placemark>')
+        kml.append(f'<name>{name}</name>')
+        kml.append(f'<description>{miejsce}</description>')
+        kml.append('<Point>')
+        kml.append(f'<coordinates>{lon},{lat},0</coordinates>')
+        kml.append('</Point>')
+        kml.append('</Placemark>')
 
     kml.append('</Document>')
     kml.append('</kml>')
-
-    return "".join(kml).strip()
+    
+    return "".join(kml)
 
 @app.on_event("startup")
 async def startup():
@@ -274,28 +248,25 @@ async def process_conversion(
 
 @router_konwerter.get("/m/{map_id}", response_class=HTMLResponse)
 async def share_map(map_id: str):
-    """
-    Serwuje stronę z mapą Leaflet, która wczytuje konkretny plik KML na podstawie ID.
-    Wszystkie klamry JS/CSS są podwojone ({{ }}), aby Python ich nie interpretował.
-    """
+    # Całość w f-stringu. Wszystkie klamry JS/CSS są podwojone {{ }}, 
+    # aby Python ich nie interpretował jako zmiennych.
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Mapa Zdarzeń z Zestawienia SWD</title>
+        <title>Mapa Operacyjna SWD</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        
         <style>
             #map {{ 
                 height: 100vh; 
                 width: 100%; 
                 background: #f3f4f6; 
             }}
-            body {{ margin: 0; padding: 0; overflow: hidden; }}
-            .leaflet-popup-content {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; }}
+            body {{ margin: 0; padding: 0; }}
+            .leaflet-popup-content {{ font-family: sans-serif; font-size: 12px; }}
         </style>
     </head>
     <body>
@@ -305,66 +276,75 @@ async def share_map(map_id: str):
         <script src="https://unpkg.com/leaflet-plugins@3.4.0/layer/vector/KML.js"></script>
 
         <script>
-            // 1. Inicjalizacja mapy na widok ogólny Polski
+            // 1. Inicjalizacja mapy
             var map = L.map('map').setView([52.2, 19.2], 6);
 
-            // 2. Dodanie warstwy OpenStreetMap
             L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
                 maxZoom: 19,
-                attribution: '&copy; OpenStreetMap'
+                attribution: '&copy; OSM'
             }}).addTo(map);
 
-            // 3. Pobieranie pliku KML
-            const kmlUrl = '/data/maps/{map_id}.kml';
-            console.log("Ładowanie warstwy KML:", kmlUrl);
-
-            fetch(kmlUrl)
+            // 2. Pobieranie danych
+            console.log("Pobieranie KML dla ID: {map_id}");
+            
+            fetch('/data/maps/{map_id}.kml')
                 .then(res => {{
-                    if (!res.ok) throw new Error('Nie znaleziono pliku mapy na serwerze (404).');
+                    if (!res.ok) throw new Error('Plik mapy nie istnieje.');
                     return res.text();
                 }})
                 .then(kmltext => {{
-                    // Czyścimy ewentualne białe znaki przed nagłówkiem XML
-                    const cleanKmlText = kmltext.trim();
-                    
                     var parser = new DOMParser();
-                    var kmlXml = parser.parseFromString(cleanKmlText, 'text/xml');
+                    var kmlXml = parser.parseFromString(kmltext.trim(), 'text/xml');
                     
-                    // Sprawdzanie czy parser XML nie zwrócił błędu
-                    var errorNode = kmlXml.querySelector('parsererror');
-                    if (errorNode) {{
-                        console.error("Błąd parsera XML:", errorNode.textContent);
-                        alert("Błąd struktury pliku KML. Sprawdź konsolę deweloperską.");
+                    // Sprawdzenie błędów XML
+                    if (kmlXml.querySelector('parsererror')) {{
+                        console.error("Błąd parsera XML");
                         return;
                     }}
 
-                    // Tworzenie warstwy KML i dodanie do mapy
-                    var track = new L.KML(kmlXml);
-                    map.addLayer(track);
+                    // 3. Próba użycia wtyczki KML
+                    try {{
+                        var track = new L.KML(kmlXml);
+                        map.addLayer(track);
+                        
+                        var layers = track.getLayers();
+                        console.log("Plugin wczytał punktów:", layers.length);
 
-                    // Pobranie wszystkich warstw (punktów)
-                    var layers = track.getLayers();
-                    console.log("Pomyślnie wczytano punktów:", layers.length);
+                        if (layers.length > 0) {{
+                            map.fitBounds(track.getBounds(), {{ padding: [30, 30] }});
+                        }} else {{
+                            // AWARYJNE RĘCZNE CZYTANIE TAGÓW
+                            console.warn("Plugin nie widzi punktów. Uruchamiam parser ręczny...");
+                            var placemarks = kmlXml.getElementsByTagName('Placemark');
+                            var markers = [];
 
-                    if (layers.length > 0) {{
-                        // Próba automatycznego dopasowania widoku do punktów
-                        try {{
-                            const bounds = track.getBounds();
-                            if (bounds.isValid()) {{
-                                map.fitBounds(bounds, {{ padding: [40, 40] }});
-                                console.log("Widok dopasowany do punktów.");
+                            for (var i = 0; i < placemarks.length; i++) {{
+                                try {{
+                                    var name = placemarks[i].getElementsByTagName('name')[0].textContent;
+                                    var coordText = placemarks[i].getElementsByTagName('coordinates')[0].textContent;
+                                    var coords = coordText.split(',');
+                                    
+                                    var lng = parseFloat(coords[0]);
+                                    var lat = parseFloat(coords[1]);
+                                    
+                                    if (!isNaN(lat) && !isNaN(lng)) {{
+                                        var m = L.marker([lat, lng]).addTo(map).bindPopup("<b>" + name + "</b>");
+                                        markers.push(m);
+                                    }}
+                                } catch(e) {{ console.error("Błąd punktu:", e); }}
                             }}
-                        }} catch (e) {{
-                            console.warn("Nie udało się obliczyć granic mapy:", e);
+
+                            if (markers.length > 0) {{
+                                var group = new L.featureGroup(markers);
+                                map.fitBounds(group.getBounds(), {{ padding: [30, 30] }});
+                                console.log("Ręcznie dodano punktów:", markers.length);
+                            }}
                         }}
-                    }} else {{
-                        console.warn("KML załadowany, ale nie znaleziono w nim żadnych punktów <Placemark>.");
+                    }} catch (e) {{
+                        console.error("Błąd krytyczny mapy:", e);
                     }}
                 }})
-                .catch(err => {{
-                    console.error("Błąd podczas ładowania mapy:", err);
-                    alert("Wystąpił problem z wczytaniem danych: " + err.message);
-                }});
+                .catch(err => alert("Błąd: " + err.message));
         </script>
     </body>
     </html>
