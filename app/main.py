@@ -90,20 +90,23 @@ def create_kml(gdf, category_field=None):
     ]
 
     for _, row in gdf.iterrows():
-        name = str(row.get('Data', 'Punkt'))
+        # OWINIĘCIE NAZWY W CDATA (to tu najczęściej siedzą błędy)
+        name = f"<![CDATA[{row.get('Data', 'Punkt')}]]>"
         color = color_map.get(row.get(category_field), "ff0000ff")
         
-        desc = "<br/>".join([f"<b>{k}:</b> {v}" for k, v in row.items() if k not in ['geometry', 'lat_dd', 'lon_dd']])
+        # Opis już mamy w CDATA, ale upewnijmy się, że jest czysty
+        desc_parts = [f"<b>{k}:</b> {v}" for k, v in row.items() if k not in ['geometry', 'lat_dd', 'lon_dd']]
+        desc = "<![CDATA[" + "<br/>".join(map(str, desc_parts)) + "]]>"
         
         kml.append(f'''
             <Placemark>
                 <name>{name}</name>
-                <description><![CDATA[{desc}]]></description>
+                <description>{desc}</description>
                 <Style>
                     <IconStyle>
                         <color>{color}</color>
                         <scale>1.2</scale>
-                        <Icon><href>http://maps.google.com/mapfiles/kml/paddle/wht-blank.png</href></Icon>
+                        <Icon><href>https://maps.google.com/mapfiles/kml/paddle/wht-blank.png</href></Icon>
                     </IconStyle>
                 </Style>
                 <Point>
@@ -265,7 +268,7 @@ async def share_map(map_id: str):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Mapa Operacyjna | Strażak Adresów</title>
+        <title>Mapa Zdarzeń dla Zestawienia SWD | Strażak Adresów</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -295,13 +298,20 @@ async def share_map(map_id: str):
                     if (!res.ok) throw new Error('Błąd serwera: ' + res.status);
                     return res.text();
                 }})
-                .then(kmltext => {{
-                    console.log("KML pobrany, długość znaków:", kmltext.length);
-                    
+                .then(kmltext => {
                     var parser = new DOMParser();
                     var kml = parser.parseFromString(kmltext, 'text/xml');
-                    var track = new L.KML(kml);
                     
+                    // SPRAWDZANIE BŁĘDÓW PARSOWANIA
+                    const errorNode = kml.querySelector('parsererror');
+                    if (errorNode) {
+                        console.error("BŁĄD SKŁADNI XML:", errorNode.textContent);
+                        alert("Plik KML ma błędy składni! Szczegóły w konsoli.");
+                        return;
+                    }
+
+                    // Niektóre wersje wtyczki wolą documentElement
+                    var track = new L.KML(kml);
                     map.addLayer(track);
 
                     // Automatyczne centrowanie na punktach
