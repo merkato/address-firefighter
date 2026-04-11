@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 import zipfile
+import tempfile
 
 app = FastAPI(title="System Geokodowania PRG")
 templates = Jinja2Templates(directory="templates")
@@ -119,38 +120,45 @@ async def process_conversion(
         final_df = pd.concat(all_dfs, ignore_index=True)
         geometry = [Point(xy) for xy in zip(final_df['lon_dd'], final_df['lat_dd'])]
         gdf = gpd.GeoDataFrame(final_df, geometry=geometry, crs="EPSG:4326")
-
-        # PRZYGOTOWANIE WYNIKU (ZIP jeśli KML + GPKG, lub samo GPKG)
-        buffer_zip = io.BytesIO()
-        
-        with zipfile.ZipFile(buffer_zip, "w") as zf:
-            # 1. Tworzenie GeoPackage
-            gpkg_buffer = io.BytesIO()
+        # Tworzymy tymczasowy folder dla plików
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gpkg_path = os.path.join(tmpdir, "wynik.gpkg")
             
-            # 2 LOGIKA KATEGORYZACJI
+            # LOGIKA ZAPISU WARSTW
             if category_field and category_field in gdf.columns:
-                # Rozbijamy na osobne warstwy wewnątrz jednego GPKG
+                # Grupujemy i zapisujemy każdą grupę jako osobną warstwę
+                first_layer = True
                 for val, group in gdf.groupby(category_field):
                     clean_name = re.sub(r'[^\w]', '_', str(val))[:30]
-                    group.to_file(gpkg_buffer, driver="GPKG", engine="pyogrio", layer=clean_name)
+                    # Przy pierwszej warstwie tworzymy plik, przy kolejnych - dopisujemy (mode="a")
+                    mode = "w" if first_layer else "a"
+                    group.to_file(gpkg_path, driver="GPKG", engine="pyogrio", layer=clean_name, mode=mode)
+                    first_layer = False
             else:
-                gdf.to_file(gpkg_buffer, driver="GPKG", engine="pyogrio", layer="zestawienie_zbiorcze")
-            
-            gpkg_buffer.seek(0)
-            zf.writestr("zestawienie_SWD.gpkg", gpkg_buffer.read())
+                gdf.to_file(gpkg_path, driver="GPKG", engine="pyogrio", layer="import_zbiorczy")
 
-            # 3. Logika pod KML / Map Maker
+            # Przygotowanie ZIP (jeśli KML) lub wysyłka samego GPKG
             if export_kml:
-                # Tutaj wstawimy funkcję generującą stylizowany KML
-                # Na razie placeholder dla struktury ZIP
-                zf.writestr("podglad_swd_mapa.kml", b"<?xml version='1.0' encoding='UTF-8'?><kml>...</kml>")
-
-        buffer_zip.seek(0)
-        return StreamingResponse(
-            buffer_zip,
-            media_type="application/zip",
-            headers={"Content-Disposition": "attachment; filename=paczka_wynikowa_GIS.zip"}
-        )
+                buffer_zip = io.BytesIO()
+                with zipfile.ZipFile(buffer_zip, "w") as zf:
+                    # Dodajemy GPKG z dysku do ZIPa
+                    with open(gpkg_path, "rb") as f:
+                        zf.writestr("zestawienie_GIS.gpkg", f.read())
+                    
+                    # Tutaj generujemy KML (póki co placeholder)
+                    zf.writestr("podglad_mapa.kml", b"...") 
+                
+                buffer_zip.seek(0)
+                return StreamingResponse(buffer_zip, media_type="application/zip", 
+                                        headers={"Content-Disposition": "attachment; filename=paczka_GIS.zip"})
+            
+            else:
+                # Jeśli tylko GPKG, czytamy go do pamięci i wysyłamy
+                with open(gpkg_path, "rb") as f:
+                    gpkg_data = f.read()
+                
+                return StreamingResponse(io.BytesIO(gpkg_data), media_type="application/geopackage+sqlite3",
+                                        headers={"Content-Disposition": "attachment; filename=zestawienie_GIS.gpkg"})
 
     except Exception as e:
         import traceback
