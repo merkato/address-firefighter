@@ -265,30 +265,59 @@ async def share_map(map_id: str):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Mapa SWD | Strażak Adresów</title>
+        <title>Mapa Operacyjna | Strażak Adresów</title>
+        <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script src="https://unpkg.com/leaflet-plugins@3.4.0/layer/vector/KML.js"></script>
         <style>
-            #map {{ height: 100vh; width: 100%; }}
+            #map {{ height: 100vh; width: 100%; background: #f8f9fa; }}
             body {{ margin: 0; padding: 0; }}
         </style>
     </head>
     <body>
         <div id="map"></div>
         <script>
-            var map = L.map('map').setView([52, 19], 6);
-            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png').addTo(map);
+            // Inicjalizacja mapy na Polskę (na wypadek błędu)
+            var map = L.map('map').setView([52.0, 19.0], 6);
+            
+            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }}).addTo(map);
 
-            fetch('/data/maps/{map_id}.kml')
-                .then(res => res.text())
+            const kmlUrl = '/data/maps/{map_id}.kml';
+            console.log("Próba wczytania KML z:", kmlUrl);
+
+            fetch(kmlUrl)
+                .then(res => {{
+                    if (!res.ok) throw new Error('Błąd serwera: ' + res.status);
+                    return res.text();
+                }})
                 .then(kmltext => {{
+                    console.log("KML pobrany, długość znaków:", kmltext.length);
+                    
                     var parser = new DOMParser();
                     var kml = parser.parseFromString(kmltext, 'text/xml');
                     var track = new L.KML(kml);
+                    
                     map.addLayer(track);
-                    map.fitBounds(track.getBounds());
+
+                    // Automatyczne centrowanie na punktach
+                    track.on("add", function() {{
+                        const bounds = track.getBounds();
+                        if (bounds.isValid()) {{
+                            map.fitBounds(bounds, {{ padding: [50, 50] }});
+                            console.log("Mapa wycentrowana na dane.");
+                        }} else {{
+                            console.warn("KML załadowany, ale nie znaleziono poprawnych współrzędnych do centrowania.");
+                        }}
+                    }});
+                }})
+                .catch(err => {{
+                    console.error("BŁĄD MAPY:", err);
+                    alert("Nie udało się wczytać punktów na mapę. Sprawdź konsolę (F12).");
                 }});
         </script>
     </body>
