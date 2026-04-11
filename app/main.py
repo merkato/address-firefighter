@@ -71,49 +71,31 @@ def cleanup_temp_file(path: str):
             shutil.rmtree(path)
 
 def create_kml(gdf, category_field=None):
-    # Prosta paleta kolorów dla kategorii (format KML: aabbggrr)
-    palette = [
-        "ff0000ff", # Czerwony
-        "ffff0000", # Niebieski
-        "ff00ff00", # Zielony
-        "ff00ffff", # Żółty
-        "ffff00ff", # Fioletowy
-    ]
-    
-    unique_vals = gdf[category_field].unique() if category_field else []
-    color_map = {val: palette[i % len(palette)] for i, val in enumerate(unique_vals)}
-
     kml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<kml xmlns="http://www.opengis.net/kml/2.2">',
-        '<Document>'
+        '<kml xmlns="http://www.opengis.net/kml/2.2">', # Ważny pełny namespace
+        '<Document>',
+        '<Style id="iconStyle">',
+        '  <IconStyle>',
+        '    <scale>1.1</scale>',
+        '    <Icon><href>https://maps.google.com/mapfiles/kml/paddle/red-circle.png</href></Icon>',
+        '  </IconStyle>',
+        '</Style>'
     ]
 
     for _, row in gdf.iterrows():
-        # OWINIĘCIE NAZWY W CDATA (to tu najczęściej siedzą błędy)
-        name = f"<![CDATA[{row.get('Data', 'Punkt')}]]>"
-        color = color_map.get(row.get(category_field), "ff0000ff")
-        
-        # Opis już mamy w CDATA, ale upewnijmy się, że jest czysty
-        desc_parts = [f"<b>{k}:</b> {v}" for k, v in row.items() if k not in ['geometry', 'lat_dd', 'lon_dd']]
-        desc = "<![CDATA[" + "<br/>".join(map(str, desc_parts)) + "]]>"
+        name = html.escape(str(row.get('Data', 'Punkt')))
+        desc = html.escape(str(row.get('Miejsce zdarzenia', '')))
         
         kml.append(f'''
             <Placemark>
                 <name>{name}</name>
-                <description>{desc}</description>
-                <Style>
-                    <IconStyle>
-                        <color>{color}</color>
-                        <scale>1.2</scale>
-                        <Icon><href>https://maps.google.com/mapfiles/kml/paddle/wht-blank.png</href></Icon>
-                    </IconStyle>
-                </Style>
+                <description><![CDATA[{desc}]]></description>
+                <styleUrl>#iconStyle</styleUrl>
                 <Point>
-                    <coordinates>{row['lon_dd']},{row['lat_dd']},0</coordinates>
+                    <coordinates>{row["lon_dd"]},{row["lat_dd"]},0</coordinates>
                 </Point>
-            </Placemark>
-        ''')
+            </Placemark>''')
     
     kml.append('</Document></kml>')
     return "\n".join(kml)
@@ -264,45 +246,91 @@ async def process_conversion(
 
 @router_konwerter.get("/m/{map_id}", response_class=HTMLResponse)
 async def share_map(map_id: str):
-    # CAŁY poniższy kod HTML/JS musi być przypisany do zmiennej jako tekst (string)
+    # Całość zamknięta w f-stringu. 
+    # UWAGA: CSS i JS używają {{ }} zamiast { }, żeby Python ich nie dotykał.
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Mapa Operacyjna | Strażak Adresów</title>
+        <title>Mapa Operacyjna SWD</title>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <script src="https://unpkg.com/leaflet-plugins@3.4.0/layer/vector/KML.js"></script>
+        
         <style>
-            #map {{ height: 100vh; width: 100%; }}
+            #map {{ 
+                height: 100vh; 
+                width: 100%; 
+                background: #e5e7eb;
+            }}
             body {{ margin: 0; padding: 0; }}
+            .leaflet-popup-content {{ font-family: sans-serif; font-size: 12px; line-height: 1.4; }}
         </style>
     </head>
     <body>
         <div id="map"></div>
-        <script>
-            var map = L.map('map').setView([52, 19], 6);
-            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png').addTo(map);
 
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/leaflet-plugins@3.4.0/layer/vector/KML.js"></script>
+
+        <script>
+            // 1. Inicjalizacja mapy
+            var map = L.map('map').setView([52, 19], 6);
+
+            // 2. Warstwa podkładowa OSM
+            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }}).addTo(map);
+
+            // 3. Wczytywanie pliku KML
+            console.log("Pobieranie mapy: {map_id}");
+            
             fetch('/data/maps/{map_id}.kml')
-                .then(res => res.text())
+                .then(res => {{
+                    if (!res.ok) throw new Error('Nie znaleziono pliku mapy.');
+                    return res.text();
+                }})
                 .then(kmltext => {{
-                    // TO JEST JS I MUSI BYĆ W ŚRODKU TEGO STRINGA
-                    var parser = new DOMParser(); 
+                    var parser = new DOMParser();
                     var kml = parser.parseFromString(kmltext, 'text/xml');
+                    
+                    // Sprawdzenie błędów parsera XML
+                    if (kml.getElementsByTagName("parsererror").length > 0) {{
+                        console.error("Błąd parsera XML w pliku KML");
+                        return;
+                    }}
+
                     var track = new L.KML(kml);
                     map.addLayer(track);
-                    
-                    track.on("add", function() {{
-                        map.fitBounds(track.getBounds());
-                    }});
+
+                    // 4. Obsługa punktów i centrowanie
+                    var layers = track.getLayers();
+                    console.log("Wczytano punktów:", layers.length);
+
+                    if (layers.length > 0) {{
+                        // Wymuszamy domyślne ikony jeśli KML-owe nie działają
+                        layers.forEach(function(layer) {{
+                            if (layer instanceof L.Marker) {{
+                                // Możesz tutaj dodać własną stylizację markerów
+                                layer.bindPopup(layer.options.name || "Punkt zdarzenia");
+                            }}
+                        }});
+
+                        // Dopasowanie widoku do punktów
+                        map.fitBounds(track.getBounds(), {{ padding: [30, 30] }});
+                    }}
+                }})
+                .catch(err => {{
+                    console.error("Błąd wczytywania KML:", err);
+                    alert("Nie udało się załadować punktów na mapę.");
                 }});
         </script>
     </body>
     </html>
     """
-    return html_content 
+    return html_content
 
 @app.post("/preview")
 async def preview(
