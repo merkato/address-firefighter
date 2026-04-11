@@ -347,10 +347,11 @@
 
             async convert() {
                 if (this.files.length === 0) { alert("Wybierz pliki!"); return; }
-                this.loading = true;
-                this.generatedMapUrl = '';
-                const response = await fetch('/konwerter/process', { method: 'POST', body: formData });
                 
+                this.loading = true;
+                this.generatedMapUrl = ''; // Resetujemy link przy nowym starcie
+
+                // 1. NAJPIERW przygotowujemy dane (pakujemy wagony)
                 const formData = new FormData();
                 for (let i = 0; i < this.files.length; i++) {
                     formData.append('files', this.files[i]);
@@ -359,33 +360,45 @@
                 formData.append('export_kml', this.exportKml);
                 formData.append('encoding', this.encoding);
 
+                // 2. DOPIERO POTEM wysyłamy (uruchamiamy lokomotywę)
                 try {
-                    const response = await fetch('/konwerter/process', { method: 'POST', body: formData });
-                    if (!response.ok) throw new Error('Błąd serwera');
-                    const mapUrl = response.headers.get('X-Map-URL');
+                    const response = await fetch('/konwerter/process', { 
+                        method: 'POST', 
+                        body: formData 
+                    });
 
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || 'Błąd serwera');
+                    }
+
+                    // Pobieramy link do mapy z nagłówków (jeśli jest)
+                    const mapUrl = response.headers.get('X-Map-URL');
                     if (mapUrl) {
                         this.generatedMapUrl = mapUrl; 
                     }
-                    // WYCIĄGANIE NAZWY PLIKU Z NAGŁÓWKA
+
+                    // Wyciągamy nazwę pliku, żeby nie zapisać wszystkiego jako .zip
                     const disposition = response.headers.get('Content-Disposition');
-                    let fileName = this.exportKml ? 'paczka_GIS.zip' : 'zestawienie.gpkg';
+                    let fileName = this.exportKml ? 'paczka_GIS_SWD.zip' : 'zestawienie_GIS.gpkg';
                     
                     if (disposition && disposition.includes('filename=')) {
                         fileName = disposition.split('filename=')[1].replace(/"/g, '');
                     }
 
+                    // Pobieranie i zapisywanie pliku
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = fileName; // 
+                    a.download = fileName;
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
                     window.URL.revokeObjectURL(url);
+
                 } catch (err) { 
-                    alert('Błąd: ' + err.message); 
+                    alert('Błąd konwersji: ' + err.message); 
                 } finally { 
                     this.loading = false; 
                 }
