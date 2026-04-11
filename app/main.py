@@ -39,15 +39,18 @@ def parse_dms(dms_str):
         return None
     dms_str = str(dms_str).strip().upper()
     parts = re.findall(r"(\d+\.?\d*)", dms_str)
-    if len(parts) < 3: return None
+    if len(parts) < 3: 
+        return None
     try:
         degrees = float(parts[0])
         minutes = float(parts[1])
         seconds = float(parts[2])
         dd = degrees + (minutes / 60) + (seconds / 3600)
-        if 'S' in dms_str or 'W' in dms_str: dd = -dd
+        if 'S' in dms_str or 'W' in dms_str: 
+            dd = -dd
         return dd
-    except Exception: return None
+    except Exception: 
+        return None
 
 @app.on_event("startup")
 async def startup():
@@ -84,13 +87,12 @@ async def analyze_columns(file: UploadFile = File(...)):
 
 @router_konwerter.post("/konwerter/process")
 async def process_conversion(
-    """Przeksztalcenie plików XLS do GPKG z konwersją współrzędnych DMS -> DD."""
     files: List[UploadFile] = File(...), # Przyjmujemy listę plików
     category_field: Optional[str] = Form(None), # Pole do rozbicia warstw/stylizacji
     export_kml: bool = Form(False), # Flaga dla mapy/KML
     encoding: str = Form("utf-8")
 ):
-all_dfs = []
+    all_dfs = []
     try:
         for file in files:
             content = await file.read()
