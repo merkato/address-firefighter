@@ -6,6 +6,7 @@ import asyncio
 import asyncpg
 import string
 import random
+import html
 import pandas as pd
 import geopandas as gpd
 from datetime import datetime
