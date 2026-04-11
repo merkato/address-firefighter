@@ -237,7 +237,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-slate-50 p-4 rounded-xl border">
                         <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">PLIK ŹRÓDŁOWY (EXCEL)</label>
-                        <input type="file" @change="files = $event.target.files" multiple class="w-full text-xs text-slate-500 file:mr-4 file:py-1 file:px-4 file:rounded file:border-0 file:bg-slate-800 file:text-white border-2 border-dashed p-1 rounded" />
+                        <input type="file" @change="analyzeFiles($event)" multiple class="w-full text-xs text-slate-500 file:mr-4 file:py-1 file:px-4 file:rounded file:border-0 file:bg-slate-800 file:text-white border-2 border-dashed p-1 rounded" />
                     </div>
                     <div class="bg-slate-50 p-4 rounded-xl border">
                         <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">KODOWANIE ZNAKÓW</label>
@@ -247,11 +247,20 @@
                         </select>
                     </div>
                 </div>
-                <button @click="convert" :disabled="!file || loading" 
+                <button @click="convert" 
+                        :disabled="files.length === 0 || loading" 
                         class="w-full py-5 rounded-xl font-black uppercase text-xl transition-all shadow-lg shadow-red-900/20"
                         :class="loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-800 text-white transform active:scale-95'">
+                    
                     <span x-show="!loading">URUCHOM KONWERSJĘ PLIKU</span>
-                    <span x-show="loading" class="animate-pulse italic uppercase">Trwa przetwarzanie danych...</span>
+                    
+                    <span x-show="loading" class="animate-pulse italic uppercase flex items-center justify-center gap-3">
+                        <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Trwa przetwarzanie danych...
+                    </span>
                 </button>
             </div>
             <div x-show="availableColumns.length > 0" x-transition class="mt-6 space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -303,51 +312,59 @@
     function konwerterApp() {
         return {
             files: [],
-            availableColumns: [],
-            useCategory: false,
-            selectedField: '',
-            exportKml: false,
-            loading: false,
+            encoding: 'utf-8',    
+            availableColumns: [], 
+            useCategory: false,   
+            selectedField: '',    
+            exportKml: false,     
+            loading: false,       
 
             async analyzeFiles(event) {
                 this.files = event.target.files;
                 if (this.files.length === 0) return;
                 
                 const formData = new FormData();
-                formData.append('file', this.files[0]); // Analizujemy pierwszy plik z brzegu
+                formData.append('file', this.files[0]); 
 
                 try {
                     const res = await fetch('/konwerter/analyze', { method: 'POST', body: formData });
+                    if (!res.ok) throw new Error();
                     const data = await res.json();
                     this.availableColumns = data.columns;
                 } catch (err) {
-                    console.error("Analiza nieudana");
+                    console.error("Analiza kolumn nieudana. Sprawdź połączenie z serwerem.");
                 }
             },
 
             async convert() {
+                if (this.files.length === 0) { alert("Wybierz pliki!"); return; }
                 this.loading = true;
+                
                 const formData = new FormData();
                 for (let i = 0; i < this.files.length; i++) {
                     formData.append('files', this.files[i]);
                 }
                 formData.append('category_field', this.useCategory ? this.selectedField : '');
                 formData.append('export_kml', this.exportKml);
+                formData.append('encoding', this.encoding);
 
                 try {
                     const response = await fetch('/konwerter/process', { method: 'POST', body: formData });
-                    if (!response.ok) throw new Error('Błąd serwera');
+                    if (!response.ok) throw new Error('Błąd serwera przy konwersji');
                     
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = "paczka_GIS_SWD.zip";
+                    a.download = "paczka_GIS_SWD.zip"; 
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
-                } catch (err) { alert(err.message); }
-                finally { this.loading = false; }
+                } catch (err) { 
+                    alert('Błąd: ' + err.message); 
+                } finally { 
+                    this.loading = false; 
+                }
             }
         }
     }
