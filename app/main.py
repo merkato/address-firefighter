@@ -248,16 +248,15 @@ async def process_conversion(
 
 @router_konwerter.get("/m/{map_id}", response_class=HTMLResponse)
 async def share_map(map_id: str):
-    # Całość w f-stringu. Wszystkie klamry JS/CSS są podwojone {{ }}, 
-    # aby Python ich nie interpretował jako zmiennych.
+    # Tytuł zmieniony na "Mapa zdarzeń z zestawienia SWD"
+    # Wszystkie klamry JS/CSS są podwojone, żeby VS Code i Python byli szczęśliwi
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Mapa Operacyjna SWD</title>
+        <title>Mapa zdarzeń z zestawienia SWD</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <style>
             #map {{ 
@@ -276,7 +275,6 @@ async def share_map(map_id: str):
         <script src="https://unpkg.com/leaflet-plugins@3.4.0/layer/vector/KML.js"></script>
 
         <script>
-            // 1. Inicjalizacja mapy
             var map = L.map('map').setView([52.2, 19.2], 6);
 
             L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
@@ -284,67 +282,64 @@ async def share_map(map_id: str):
                 attribution: '&copy; OSM'
             }}).addTo(map);
 
-            // 2. Pobieranie danych
-            console.log("Pobieranie KML dla ID: {map_id}");
+            console.log("Ładowanie danych: {map_id}");
             
             fetch('/data/maps/{map_id}.kml')
                 .then(res => {{
-                    if (!res.ok) throw new Error('Plik mapy nie istnieje.');
+                    if (!res.ok) throw new Error('Mapa nie istnieje.');
                     return res.text();
                 }})
                 .then(kmltext => {{
                     var parser = new DOMParser();
                     var kmlXml = parser.parseFromString(kmltext.trim(), 'text/xml');
                     
-                    // Sprawdzenie błędów XML
                     if (kmlXml.querySelector('parsererror')) {{
                         console.error("Błąd parsera XML");
                         return;
                     }}
 
-                    // 3. Próba użycia wtyczki KML
                     try {{
                         var track = new L.KML(kmlXml);
                         map.addLayer(track);
                         
                         var layers = track.getLayers();
-                        console.log("Plugin wczytał punktów:", layers.length);
-
                         if (layers.length > 0) {{
                             map.fitBounds(track.getBounds(), {{ padding: [30, 30] }});
                         }} else {{
-                            // AWARYJNE RĘCZNE CZYTANIE TAGÓW
-                            console.warn("Plugin nie widzi punktów. Uruchamiam parser ręczny...");
                             var placemarks = kmlXml.getElementsByTagName('Placemark');
                             var markers = [];
 
                             for (var i = 0; i < placemarks.length; i++) {{
                                 try {{
-                                    var name = placemarks[i].getElementsByTagName('name')[0].textContent;
-                                    var coordText = placemarks[i].getElementsByTagName('coordinates')[0].textContent;
-                                    var coords = coordText.split(',');
+                                    var nameNodes = placemarks[i].getElementsByTagName('name');
+                                    var name = nameNodes.length > 0 ? nameNodes[0].textContent : "Zdarzenie";
                                     
-                                    var lng = parseFloat(coords[0]);
-                                    var lat = parseFloat(coords[1]);
-                                    
-                                    if (!isNaN(lat) && !isNaN(lng)) {{
-                                        var m = L.marker([lat, lng]).addTo(map).bindPopup("<b>" + name + "</b>");
-                                        markers.push(m);
+                                    var coordNodes = placemarks[i].getElementsByTagName('coordinates');
+                                    if (coordNodes.length > 0) {{
+                                        var coords = coordNodes[0].textContent.split(',');
+                                        var lng = parseFloat(coords[0]);
+                                        var lat = parseFloat(coords[1]);
+                                        
+                                        if (!isNaN(lat) && !isNaN(lng)) {{
+                                            var m = L.marker([lat, lng]).addTo(map).bindPopup("<b>" + name + "</b>");
+                                            markers.push(m);
+                                        }}
                                     }}
-                                } catch(e) {{ console.error("Błąd punktu:", e); }}
+                                }} catch(e) {{ 
+                                    console.error("Błąd punktu:", e); 
+                                }}
                             }}
 
                             if (markers.length > 0) {{
                                 var group = new L.featureGroup(markers);
                                 map.fitBounds(group.getBounds(), {{ padding: [30, 30] }});
-                                console.log("Ręcznie dodano punktów:", markers.length);
                             }}
                         }}
                     }} catch (e) {{
-                        console.error("Błąd krytyczny mapy:", e);
+                        console.error("Błąd mapy:", e);
                     }}
                 }})
-                .catch(err => alert("Błąd: " + err.message));
+                .catch(err => console.error("Błąd ładowania:", err));
         </script>
     </body>
     </html>
