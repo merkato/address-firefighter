@@ -96,16 +96,19 @@ async def analyze_columns(file: UploadFile = File(...)):
 @router_konwerter.post("/konwerter/process")
 async def process_conversion(
     background_tasks: BackgroundTasks,
-    files: List[UploadFile] = File(...), # Przyjmujemy listę plików
-    category_field: Optional[str] = Form(None), # Pole do rozbicia warstw/stylizacji
-    export_kml: bool = Form(False), # Flaga dla mapy/KML
+    files: List[UploadFile] = File(...),
+    category_field: Optional[str] = Form(None),
+    export_kml: bool = Form(False),
     encoding: str = Form("utf-8")
 ):
     all_dfs = []
+    temp_gpkg_path = None
+    temp_zip_path = None
+
     try:
+        # 1. Wczytywanie plików
         for file in files:
             content = await file.read()
-            # Wybór silnika jak wcześniej
             if file.filename.lower().endswith('.xls'):
                 df = pd.read_excel(io.BytesIO(content), engine='xlrd')
             else:
@@ -113,7 +116,6 @@ async def process_conversion(
             
             df.columns = [str(c).strip().replace('\xa0', ' ') for c in df.columns]
             
-            # Mapowanie współrzędnych
             lat_col = next((c for c in df.columns if c.lower() == 'szerokość geo.'), None)
             lon_col = next((c for c in df.columns if c.lower() == 'długość geo.'), None)
             
@@ -124,57 +126,60 @@ async def process_conversion(
 
         if not all_dfs:
             raise HTTPException(status_code=400, detail="Brak poprawnych danych do konwersji.")
+
+        # 2. Tworzenie pliku tymczasowego dla GPKG
         fd, temp_gpkg_path = tempfile.mkstemp(suffix=".gpkg")
-        os.close(fd) # Zamykamy deskryptor, bo geopandas sam go sobie otworzy
+        os.close(fd)
 
-        try:
-            final_df = pd.concat(all_dfs, ignore_index=True)
-            geometry = [Point(xy) for xy in zip(final_df['lon_dd'], final_df['lat_dd'])]
-            gdf = gpd.GeoDataFrame(final_df, geometry=geometry, crs="EPSG:4326")
+        final_df = pd.concat(all_dfs, ignore_index=True)
+        geometry = [Point(xy) for xy in zip(final_df['lon_dd'], final_df['lat_dd'])]
+        gdf = gpd.GeoDataFrame(final_df, geometry=geometry, crs="EPSG:4326")
 
-            # Zapis warstw (mode "w" dla pierwszej, "a" dla kolejnych)
-            if category_field and category_field in gdf.columns:
-                first = True
-                for val, group in gdf.groupby(category_field):
-                    layer_name = re.sub(r'[^\w]', '_', str(val))[:30]
-                    mode = "w" if first else "a"
-                    group.to_file(temp_gpkg_path, driver="GPKG", engine="pyogrio", layer=layer_name, mode=mode)
-                    first = False
-            else:
-                gdf.to_file(temp_gpkg_path, driver="GPKG", engine="pyogrio", layer="import_zbiorczy")
+        # 3. Zapis do GPKG (warstwy)
+        if category_field and category_field in gdf.columns:
+            first = True
+            for val, group in gdf.groupby(category_field):
+                layer_name = re.sub(r'[^\w]', '_', str(val))[:30]
+                mode = "w" if first else "a"
+                group.to_file(temp_gpkg_path, driver="GPKG", engine="pyogrio", layer=layer_name, mode=mode)
+                first = False
+        else:
+            gdf.to_file(temp_gpkg_path, driver="GPKG", engine="pyogrio", layer="import_zbiorczy")
 
-            if export_kml:
-                # Jeśli robimy ZIP, musimy też zrobić go jako plik tymczasowy
-                fd_z, temp_zip_path = tempfile.mkstemp(suffix=".zip")
-                os.close(fd_z)
-                
-                with zipfile.ZipFile(temp_zip_path, "w") as zf:
-                    zf.write(temp_gpkg_path, arcname="dane_GIS.gpkg")
-                    # Tutaj Twój generator KML...
-                    zf.writestr("podglad.kml", b"...")
+        # 4. Obsługa wyjścia (ZIP lub GPKG)
+        if export_kml:
+            fd_z, temp_zip_path = tempfile.mkstemp(suffix=".zip")
+            os.close(fd_z)
+            
+            with zipfile.ZipFile(temp_zip_path, "w") as zf:
+                zf.write(temp_gpkg_path, arcname="dane_GIS.gpkg")
+                # Tu w przyszłości wstawisz swój generator KML
+                zf.writestr("podglad.kml", b"<?xml version='1.0' encoding='UTF-8'?><kml>...</kml>")
 
-                # Dodajemy oba pliki do usunięcia po wysyłce
-                background_tasks.add_task(cleanup_temp_file, temp_gpkg_path)
-                background_tasks.add_task(cleanup_temp_file, temp_zip_path)
+            background_tasks.add_task(cleanup_temp_file, temp_gpkg_path)
+            background_tasks.add_task(cleanup_temp_file, temp_zip_path)
 
-                return FileResponse(
-                    temp_zip_path, 
-                    media_type="application/zip",
-                    filename="paczka_GIS_SWD.zip"
-                )
+            return FileResponse(
+                temp_zip_path, 
+                media_type="application/zip",
+                filename="paczka_GIS_SWD.zip"
+            )
 
-            else:
-                # Wysyłka samego GPKG
-                background_tasks.add_task(cleanup_temp_file, temp_gpkg_path)
-                return FileResponse(
-                    temp_gpkg_path,
-                    media_type="application/geopackage+sqlite3",
-                    filename="zestawienie_GIS.gpkg"
-                )
-        except Exception as e:
-            # W razie błędu też sprzątamy
-            cleanup_temp_file(temp_gpkg_path)
-            raise HTTPException(status_code=500, detail=str(e))
+        else:
+            background_tasks.add_task(cleanup_temp_file, temp_gpkg_path)
+            return FileResponse(
+                temp_gpkg_path,
+                media_type="application/geopackage+sqlite3",
+                filename="zestawienie_GIS.gpkg"
+            )
+
+    except Exception as e:
+        # Sprzątanie w razie błędu na dowolnym etapie
+        if temp_gpkg_path: cleanup_temp_file(temp_gpkg_path)
+        if temp_zip_path: cleanup_temp_file(temp_zip_path)
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
     
 @app.post("/preview")
 async def preview(
