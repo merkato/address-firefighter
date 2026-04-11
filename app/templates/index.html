@@ -282,7 +282,15 @@
                         </label>
                     </div>
                 </div>
-
+                <template x-if="generatedMapUrl">
+                    <div class="mt-4 p-4 bg-blue-900 text-white rounded-xl border-2 border-blue-400 animate-bounce">
+                        <p class="text-[10px] font-black uppercase">Link do mapy mobilnej:</p>
+                        <div class="flex items-center gap-2">
+                            <input readonly :value="generatedMapUrl" class="bg-blue-800 p-2 rounded w-full text-xs font-mono border-none" />
+                            <button @click="navigator.clipboard.writeText(generatedMapUrl); alert('Skopiowano!')" class="bg-white text-blue-900 px-3 py-2 rounded font-bold text-xs">KOPIUJ</button>
+                        </div>
+                    </div>
+                </template>
                 <div x-show="useCategory" x-transition class="pt-2 animate-pulse-once">
                     <label class="block text-[9px] font-black text-slate-400 uppercase mb-1 ml-1">Wybierz pole atrybutowe:</label>
                     <select x-model="selectedField" class="w-full border-2 border-emerald-100 p-2 rounded-lg text-xs font-bold bg-white outline-none focus:border-emerald-500 transition-colors">
@@ -339,7 +347,12 @@
             async convert() {
                 if (this.files.length === 0) { alert("Wybierz pliki!"); return; }
                 this.loading = true;
-                
+                const response = await fetch('/konwerter/process', { method: 'POST', body: formData });
+                const mapUrl = response.headers.get('X-Map-URL');
+
+                if (mapUrl) {
+                    this.generatedMapUrl = mapUrl; // Dodaj to do data() w Alpine.js
+                }
                 const formData = new FormData();
                 for (let i = 0; i < this.files.length; i++) {
                     formData.append('files', this.files[i]);

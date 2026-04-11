@@ -4,6 +4,8 @@ import re
 import json
 import asyncio
 import asyncpg
+import string
+import random
 import pandas as pd
 import geopandas as gpd
 from datetime import datetime
@@ -11,6 +13,7 @@ from typing import List, Optional
 from shapely.geometry import Point
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, Request, HTTPException, BackgroundTasks
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 
@@ -20,6 +23,13 @@ templates = Jinja2Templates(directory="templates")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://strazak:mocne-haslo-osp@db:5432/prg_database")
 EXPORTS_DIR = "exports"
 os.makedirs(EXPORTS_DIR, exist_ok=True)
+
+MAPS_DIR = "/app/data/maps"
+os.makedirs(MAPS_DIR, exist_ok=True)
+
+def generate_short_hash(length=5):
+    chars = string.ascii_letters + string.digits
+    return ''.join(random.choice(chars) for _ in range(length))
 
 # Rejestr aktywnych procesów
 jobs = {}
@@ -60,6 +70,51 @@ def cleanup_temp_file(path: str):
         elif os.path.isdir(path):
             shutil.rmtree(path)
 
+def create_kml(gdf, category_field=None):
+    # Prosta paleta kolorów dla kategorii (format KML: aabbggrr)
+    palette = [
+        "ff0000ff", # Czerwony
+        "ffff0000", # Niebieski
+        "ff00ff00", # Zielony
+        "ff00ffff", # Żółty
+        "ffff00ff", # Fioletowy
+    ]
+    
+    unique_vals = gdf[category_field].unique() if category_field else []
+    color_map = {val: palette[i % len(palette)] for i, val in enumerate(unique_vals)}
+
+    kml = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<kml xmlns="http://www.opengis.net/kml/2.2">',
+        '<Document>'
+    ]
+
+    for _, row in gdf.iterrows():
+        name = str(row.get('Data', 'Punkt'))
+        color = color_map.get(row.get(category_field), "ff0000ff")
+        
+        desc = "<br/>".join([f"<b>{k}:</b> {v}" for k, v in row.items() if k not in ['geometry', 'lat_dd', 'lon_dd']])
+        
+        kml.append(f'''
+            <Placemark>
+                <name>{name}</name>
+                <description><![CDATA[{desc}]]></description>
+                <Style>
+                    <IconStyle>
+                        <color>{color}</color>
+                        <scale>1.2</scale>
+                        <Icon><href>http://maps.google.com/mapfiles/kml/paddle/wht-blank.png</href></Icon>
+                    </IconStyle>
+                </Style>
+                <Point>
+                    <coordinates>{row['lon_dd']},{row['lat_dd']},0</coordinates>
+                </Point>
+            </Placemark>
+        ''')
+    
+    kml.append('</Document></kml>')
+    return "\n".join(kml)
+
 @app.on_event("startup")
 async def startup():
     app.state.pool = await asyncpg.create_pool(DATABASE_URL)
@@ -92,6 +147,8 @@ async def analyze_columns(file: UploadFile = File(...)):
         return {"columns": cols}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Błąd analizy struktury: {str(e)}")
+
+app.mount("/data/maps", StaticFiles(directory=MAPS_DIR), name="maps")
 
 @router_konwerter.post("/konwerter/process")
 async def process_conversion(
@@ -147,22 +204,43 @@ async def process_conversion(
             gdf.to_file(temp_gpkg_path, driver="GPKG", engine="pyogrio", layer="import_zbiorczy")
 
         # 4. Obsługa wyjścia (ZIP lub GPKG)
+        map_hash = None
         if export_kml:
+            # 1. Generujemy hash i treść KML
+            map_hash = generate_short_hash()
+            kml_text = create_kml(gdf, category_field)
+            
+            # 2. Zapisujemy KML do folderu stałego (dla widoku Leaflet /m/{hash})
+            permanent_kml_path = os.path.join(MAPS_DIR, f"{map_hash}.kml")
+            with open(permanent_kml_path, "w", encoding="utf-8") as f:
+                f.write(kml_text)
+
+            # 3. Tworzymy tymczasowy ZIP dla użytkownika
             fd_z, temp_zip_path = tempfile.mkstemp(suffix=".zip")
             os.close(fd_z)
             
             with zipfile.ZipFile(temp_zip_path, "w") as zf:
+                # Wrzucamy GPKG
                 zf.write(temp_gpkg_path, arcname="dane_GIS.gpkg")
-                # Tu w przyszłości wstawisz swój generator KML
-                zf.writestr("podglad.kml", b"<?xml version='1.0' encoding='UTF-8'?><kml>...</kml>")
+                # Wrzucamy wygenerowany KML (konwersja str na bytes)
+                zf.writestr("podglad_mobilny.kml", kml_text.encode('utf-8'))
 
+            # 4. Rejestrujemy czyszczenie plików TYMCZASOWYCH
+            # (Pliku w MAPS_DIR nie usuwamy, bo link przestałby działać!)
             background_tasks.add_task(cleanup_temp_file, temp_gpkg_path)
             background_tasks.add_task(cleanup_temp_file, temp_zip_path)
-
+            
+            # 5. Przygotowanie nagłówków z linkiem do mapy
+            headers = {
+                "X-Map-URL": f"https://geokoder.giswgorach.pl/m/{map_hash}",
+                "Access-Control-Expose-Headers": "X-Map-URL" # Ważne dla frontendu!
+            }
+            
             return FileResponse(
                 temp_zip_path, 
                 media_type="application/zip",
-                filename="paczka_GIS_SWD.zip"
+                filename="paczka_GIS_SWD.zip",
+                headers=headers
             )
 
         else:
@@ -180,7 +258,43 @@ async def process_conversion(
         import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+@router_konwerter.get("/m/{map_id}", response_class=HTMLResponse)
+async def share_map(map_id: str):
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Mapa SWD | Strażak Adresów</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/leaflet-plugins@3.4.0/layer/vector/KML.js"></script>
+        <style>
+            #map {{ height: 100vh; width: 100%; }}
+            body {{ margin: 0; padding: 0; }}
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        <script>
+            var map = L.map('map').setView([52, 19], 6);
+            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png').addTo(map);
+
+            fetch('/data/maps/{map_id}.kml')
+                .then(res => res.text())
+                .then(kmltext => {{
+                    var parser = new DOMParser();
+                    var kml = parser.parseFromString(kmltext, 'text/xml');
+                    var track = new L.KML(kml);
+                    map.addLayer(track);
+                    map.fitBounds(track.getBounds());
+                }});
+        </script>
+    </body>
+    </html>
+    """
+
 @app.post("/preview")
 async def preview(
     file: UploadFile = File(...), 

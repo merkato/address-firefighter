@@ -45,6 +45,7 @@ services:
       DATABASE_URL: postgresql://strazak:haslo@db:5432/prg_database
     volumes:
       - ./app:/app
+      - ./data/maps:/app/data/maps
 
 volumes:
   pgdata:
